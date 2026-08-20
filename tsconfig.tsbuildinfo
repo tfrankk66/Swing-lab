@@ -1,1 +1,0 @@
-{"root":["./src/app.tsx","./src/main.tsx","./src/components/capturesheet.tsx","./src/components/intake.tsx","./src/components/timeline.tsx","./src/hooks/useplayhead.ts","./src/lib/fps.ts","./src/lib/frames.ts"],"version":"5.7.3"}

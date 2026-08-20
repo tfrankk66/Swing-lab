@@ -9,3 +9,6 @@ dist-ssr
 .vscode/*
 !.vscode/extensions.json
 *.log
+
+tsconfig.tsbuildinfo
+*.tsbuildinfo

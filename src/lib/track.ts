@@ -32,6 +32,9 @@ export interface SwingTrack {
   /** Source video pixel dimensions, for aspect-correct angle maths. */
   videoWidth: number;
   videoHeight: number;
+  /** Dimensions actually fed to the model after downscaling. */
+  analyzedWidth: number;
+  analyzedHeight: number;
   /** count * 33 * 4 — x, y, z, visibility. Normalised image space. */
   image: Float32Array;
   /** count * 33 * 3 — metres, origin at the hip midpoint. */
@@ -42,6 +45,10 @@ export interface SwingTrack {
   delegate: "GPU" | "CPU";
   /** Wall-clock milliseconds the pass took, for the "next time" estimate. */
   elapsedMs: number;
+  /** Time spent waiting on the decoder to land on each frame. */
+  seekMs: number;
+  /** Time spent downscaling and running the model. */
+  detectMs: number;
 }
 
 export const IMAGE_STRIDE = LANDMARK_COUNT * 4;

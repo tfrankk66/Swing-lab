@@ -44,12 +44,16 @@ function makeTrack(count: number, missing: number[] = []): SwingTrack {
     count,
     videoWidth: 1080,
     videoHeight: 1920,
+    analyzedWidth: 405,
+    analyzedHeight: 720,
     image,
     world,
     found,
     quality: "full",
     delegate: "GPU",
     elapsedMs: 1000,
+    seekMs: 400,
+    detectMs: 600,
   };
 }
 

@@ -59,8 +59,11 @@ export function AnalyzePanel({
 
   if (track) {
     const found = coverage(track);
-    const secondsPerFrame = track.elapsedMs / Math.max(1, track.count) / 1000;
+    const perFrame = track.elapsedMs / Math.max(1, track.count);
+    const seekPerFrame = track.seekMs / Math.max(1, track.count);
+    const detectPerFrame = track.detectMs / Math.max(1, track.count);
     const gaps = track.count - Math.round(found * track.count);
+    const bound = track.seekMs > track.detectMs ? "decoder" : "model";
 
     return (
       <div className="analyze">
@@ -84,8 +87,11 @@ export function AnalyzePanel({
           </button>
         </div>
         <p className="mono-note">
-          {track.quality} model on {track.delegate} ·{" "}
-          {(secondsPerFrame * 1000).toFixed(0)} ms per frame
+          {track.quality} model on {track.delegate} at {track.analyzedWidth}
+          &times;{track.analyzedHeight} · {perFrame.toFixed(0)} ms per frame
+          <br />
+          seek {seekPerFrame.toFixed(0)} ms · detect{" "}
+          {detectPerFrame.toFixed(0)} ms — {bound}-bound
           {gaps > 0 && " · gap frames show no skeleton"}
         </p>
       </div>

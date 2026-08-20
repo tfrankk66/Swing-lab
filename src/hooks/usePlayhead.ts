@@ -31,6 +31,12 @@ export function usePlayhead(
   /** Current clip. The loop restarts when this changes, once the element exists. */
   src: string | null,
   options: Options,
+  /**
+   * Set false while something else is driving the video. The loop sets state
+   * sixty times a second, and a full React render per animation frame is real
+   * contention for the main thread the pose model is trying to use.
+   */
+  enabled = true,
 ): Playhead {
   const [time, setTime] = useState(0);
   const [playing, setPlaying] = useState(false);
@@ -41,7 +47,7 @@ export function usePlayhead(
 
   useEffect(() => {
     const video = videoRef.current;
-    if (!video || !src) return;
+    if (!video || !src || !enabled) return;
 
     let raf = 0;
 
@@ -79,7 +85,7 @@ export function usePlayhead(
       video.removeEventListener("play", onPlay);
       video.removeEventListener("pause", onPause);
     };
-  }, [videoRef, src]);
+  }, [videoRef, src, enabled]);
 
   return { time, playing };
 }

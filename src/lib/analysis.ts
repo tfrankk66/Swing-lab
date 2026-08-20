@@ -1,10 +1,6 @@
 import { getLandmarker, LANDMARK_COUNT, type ModelQuality } from "./pose";
 import { frameToTime } from "./frames";
-import {
-  IMAGE_STRIDE,
-  WORLD_STRIDE,
-  type SwingTrack,
-} from "./track";
+import { IMAGE_STRIDE, WORLD_STRIDE, type SwingTrack } from "./track";
 
 export interface AnalysisProgress {
   done: number;
@@ -21,6 +17,19 @@ export interface AnalysisOptions {
   to: number;
   quality: ModelQuality;
 }
+
+/**
+ * Longest edge fed to the model.
+ *
+ * BlazePose resizes its input to 256x256 internally, so handing it a 4K frame
+ * buys nothing in accuracy and costs a full-resolution texture upload on every
+ * call. Downscaling into a small working canvas first is a straight saving,
+ * and landmarks come back normalised, so no coordinates need adjusting.
+ */
+const MAX_EDGE = 720;
+
+/** Yield to the event loop no more often than this, in milliseconds. */
+const YIELD_EVERY_MS = 100;
 
 /** Resolves once the video has actually painted the requested time. */
 function seekTo(video: HTMLVideoElement, time: number): Promise<void> {
@@ -52,6 +61,10 @@ function seekTo(video: HTMLVideoElement, time: number): Promise<void> {
  * detection pass silently thins the sample. The measurements in v0.4 assume a
  * gapless series, and finding impact within a frame or two depends on actually
  * having every frame. Determinism wins over speed here.
+ *
+ * Seek and detect time are tracked separately because they call for opposite
+ * fixes: detect-bound means a smaller model or fewer pixels, seek-bound means
+ * the decoder is the wall and only a different decode path gets past it.
  */
 export async function analyzeRange(
   video: HTMLVideoElement,
@@ -70,11 +83,23 @@ export async function analyzeRange(
   video.pause();
   const restoreTime = video.currentTime;
 
+  const sourceWidth = video.videoWidth || 1;
+  const sourceHeight = video.videoHeight || 1;
+  const shrink = Math.min(1, MAX_EDGE / Math.max(sourceWidth, sourceHeight));
+  const work = document.createElement("canvas");
+  work.width = Math.max(1, Math.round(sourceWidth * shrink));
+  work.height = Math.max(1, Math.round(sourceHeight * shrink));
+  const workCtx = work.getContext("2d", { alpha: false });
+  if (!workCtx) throw new Error("Could not create a 2D context for analysis.");
+
   const image = new Float32Array(total * IMAGE_STRIDE);
   const world = new Float32Array(total * WORLD_STRIDE);
   const found = new Uint8Array(total);
 
   const startedAt = performance.now();
+  let seekMs = 0;
+  let detectMs = 0;
+  let lastYield = startedAt;
   // detectForVideo rejects a timestamp that doesn't advance, and at 240fps
   // consecutive frames round to the same millisecond, so keep our own clock.
   let stamp = 0;
@@ -85,15 +110,20 @@ export async function analyzeRange(
       return null;
     }
 
+    const beforeSeek = performance.now();
     await seekTo(video, frameToTime(from + index, fps));
-    stamp += 1;
+    const afterSeek = performance.now();
+    seekMs += afterSeek - beforeSeek;
 
+    stamp += 1;
     let result;
     try {
-      result = landmarker.detectForVideo(video, stamp);
+      workCtx.drawImage(video, 0, 0, work.width, work.height);
+      result = landmarker.detectForVideo(work, stamp);
     } catch {
       result = null;
     }
+    detectMs += performance.now() - afterSeek;
 
     const pose = result?.landmarks?.[0];
     const posesWorld = result?.worldLandmarks?.[0];
@@ -124,9 +154,13 @@ export async function analyzeRange(
     }
 
     const done = index + 1;
-    const elapsed = performance.now() - startedAt;
-    // Yield every few frames so the progress bar paints and cancel stays live.
-    if (done % 4 === 0 || done === total) {
+    const now = performance.now();
+    // Yield on a clock, not a frame count. setTimeout(0) is clamped to about
+    // 4ms once nested, so yielding every fourth frame spent a tenth of the
+    // budget waiting for timers.
+    if (now - lastYield >= YIELD_EVERY_MS || done === total) {
+      lastYield = now;
+      const elapsed = now - startedAt;
       onProgress({
         done,
         total,
@@ -143,13 +177,17 @@ export async function analyzeRange(
     fps,
     startFrame: from,
     count: total,
-    videoWidth: video.videoWidth,
-    videoHeight: video.videoHeight,
+    videoWidth: sourceWidth,
+    videoHeight: sourceHeight,
+    analyzedWidth: work.width,
+    analyzedHeight: work.height,
     image,
     world,
     found,
     quality,
     delegate,
     elapsedMs: performance.now() - startedAt,
+    seekMs,
+    detectMs,
   };
 }

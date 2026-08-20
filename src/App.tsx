@@ -50,12 +50,12 @@ export default function App() {
 
   const fps = rate?.fps ?? 30;
   const total = frameCount(duration, fps);
-  const { time, playing } = usePlayhead(videoRef, src, {
-    fps,
-    trimIn: trim.in,
-    trimOut: trim.out,
-    loop,
-  });
+  const { time, playing } = usePlayhead(
+    videoRef,
+    src,
+    { fps, trimIn: trim.in, trimOut: trim.out, loop },
+    !pose.running,
+  );
   const frame = clampFrame(timeToFrame(time, fps), total);
 
   /* ------------------------------------------------------------- loading */

@@ -3,14 +3,16 @@
 Down-the-line golf swing analysis that runs entirely in the browser. No upload,
 no account, no server holding your video.
 
-**Status: v0.1 — the player.** Frame-accurate playback and trimming. Pose
-overlay, measurements, and coaching come in later phases.
+**Status: v0.2 — pose overlay.** Frame-accurate playback, trimming, and a
+skeleton tracked across the trimmed swing. Measurements and coaching come in
+later phases.
 
 ## Running it
 
 ```bash
-npm install
+npm install   # also fetches ~15MB of model weights, see below
 npm run dev
+npm test
 ```
 
 Open http://localhost:5173 on the laptop, or the printed Network URL on your
@@ -50,9 +52,45 @@ change it:
 src/
   lib/fps.ts          Frame-rate measurement (see note below)
   lib/frames.ts       Frame <-> time maths, impact-resolution helpers
+  lib/pose.ts         MediaPipe setup, BlazePose landmark map, bones
+  lib/analysis.ts     Seek-and-detect pass over a frame range
+  lib/track.ts        SwingTrack storage + accessors (what v0.4 reads)
+  lib/draw.ts         Skeleton rendering
   hooks/usePlayhead   Playback position + trim-range enforcement
-  components/         Intake, Timeline, CaptureSheet
+  hooks/usePoseTrack  Analysis lifecycle: progress, cancel, errors
+  components/         Intake, Timeline, CaptureSheet, Overlay, AnalyzePanel
+scripts/
+  prepare-assets.mjs  Copies MediaPipe WASM + downloads model weights
 ```
+
+## Assets
+
+`scripts/prepare-assets.mjs` runs on `postinstall`, `dev` and `build`. It
+copies MediaPipe's WASM runtime out of `node_modules` into `public/mediapipe`
+and downloads the pose weights into `public/models`. Both are gitignored and
+reproducible.
+
+Everything is served from our own origin rather than MediaPipe's CDN, because
+the app is meant to work at a range with no signal. A failed download warns
+rather than breaking the install; re-run `npm run assets` when back online.
+
+## Pose detection
+
+`analyzeRange` seeks to each frame in the trimmed range and runs the
+landmarker, building a `SwingTrack` of 33 landmarks per frame in both
+normalised image space and hip-centred world space.
+
+Seeking is slower than playing the clip through with
+`requestVideoFrameCallback`, and that is the deliberate trade. Playing only
+ever hands over frames the compositor managed to present, so a slow detection
+pass silently thins the sample — and finding impact within a frame or two
+depends on actually having every frame.
+
+Low-confidence bones are drawn dashed rather than hidden. Through the
+downswing the trail arm is a blur and the model's confidence collapses;
+dropping those bones makes the overlay strobe, and showing uncertainty is
+better than hiding it. Frames where no pose was found draw nothing, and the
+panel reports the gap count.
 
 ### The frame-rate problem
 
@@ -80,8 +118,8 @@ Firefox has no `requestVideoFrameCallback`, so it falls back to an assumed
 
 | Version  | Adds                                                          |
 | -------- | ------------------------------------------------------------- |
-| **v0.1** | Player: upload, scrub, frame-step, trim, loop                  |
-| v0.2     | MediaPipe pose landmarks, skeleton overlay                     |
+| v0.1     | Player: upload, scrub, frame-step, trim, loop                  |
+| **v0.2** | MediaPipe pose landmarks, skeleton overlay                     |
 | v0.3     | P1/P4/P7 detection, filmstrip, slow-motion factor inference    |
 | v0.4     | Nine metrics, plane and butt reference lines, fault thresholds |
 | v0.5     | Claude coaching, curated drill library                         |

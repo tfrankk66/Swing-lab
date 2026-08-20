@@ -9,8 +9,12 @@ import {
 import { Intake } from "./components/Intake";
 import { Timeline } from "./components/Timeline";
 import { CaptureSheet } from "./components/CaptureSheet";
+import { Overlay } from "./components/Overlay";
+import { AnalyzePanel } from "./components/AnalyzePanel";
 import { usePlayhead } from "./hooks/usePlayhead";
+import { usePoseTrack } from "./hooks/usePoseTrack";
 import { detectFrameRate, type FrameRateResult } from "./lib/fps";
+import type { ModelQuality } from "./lib/pose";
 import {
   clampFrame,
   effectiveFps,
@@ -27,6 +31,7 @@ const PX_PER_FRAME = 8;
 
 export default function App() {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
 
   const [src, setSrc] = useState<string | null>(null);
   const [duration, setDuration] = useState(0);
@@ -38,6 +43,10 @@ export default function App() {
   const [speed, setSpeed] = useState(0.25);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [scrubbed, setScrubbed] = useState(false);
+  const [quality, setQuality] = useState<ModelQuality>("full");
+  const [overlayOn, setOverlayOn] = useState(true);
+
+  const pose = usePoseTrack(videoRef);
 
   const fps = rate?.fps ?? 30;
   const total = frameCount(duration, fps);
@@ -60,6 +69,7 @@ export default function App() {
     setDuration(0);
     setTrim({ in: 0, out: 0 });
     setScrubbed(false);
+    pose.clear();
   };
 
   const closeClip = () => {
@@ -69,6 +79,7 @@ export default function App() {
     });
     setRate(null);
     setDuration(0);
+    pose.clear();
   };
 
   /**
@@ -228,6 +239,7 @@ export default function App() {
 
       <div
         className="stage"
+        ref={stageRef}
         onPointerDown={onStagePointerDown}
         onPointerMove={onStagePointerMove}
         onPointerUp={endStageDrag}
@@ -240,6 +252,13 @@ export default function App() {
           muted
           preload="auto"
           onLoadedMetadata={(e) => void onLoadedMetadata(e.currentTarget)}
+        />
+        <Overlay
+          track={pose.track}
+          frame={frame}
+          visible={overlayOn}
+          videoRef={videoRef}
+          stageRef={stageRef}
         />
         <div className="readout">
           <span className="big">
@@ -317,6 +336,21 @@ export default function App() {
           </div>
         </div>
 
+        <AnalyzePanel
+          track={pose.track}
+          progress={pose.progress}
+          error={pose.error}
+          quality={quality}
+          frames={trimmedFrames}
+          overlayOn={overlayOn}
+          onQuality={setQuality}
+          onRun={() =>
+            void pose.run({ fps, from: trim.in, to: trim.out, quality })
+          }
+          onCancel={pose.cancel}
+          onToggleOverlay={() => setOverlayOn((v) => !v)}
+        />
+
         <div className="keyhint">
           space play · ← → frame · shift+← → ten · i in · o out · l loop
         </div>
@@ -338,6 +372,9 @@ export default function App() {
               in: 0,
               out: Math.max(1, frameCount(duration, nextFps)) - 1,
             });
+            // The track indexes by frame number, so a new frame rate
+            // renumbers every frame in it.
+            pose.clear();
             setSheetOpen(false);
           }}
           onClose={() => setSheetOpen(false)}

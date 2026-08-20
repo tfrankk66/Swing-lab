@@ -22,6 +22,10 @@
   --body: Charter, "Bitstream Charter", "Iowan Old Style", Georgia, serif;
   --mono: ui-monospace, "Cascadia Mono", Consolas, "SF Mono", Menlo, monospace;
 
+  /* Overlay ink. Separate from body text: it sits on video, not on paper. */
+  --overlay-bone: #f4f8f8;
+  --overlay-weak: #8aa0a3;
+
   --tap: 2.75rem; /* minimum comfortable touch target */
   --safe-b: env(safe-area-inset-bottom, 0px);
   --safe-t: env(safe-area-inset-top, 0px);
@@ -44,6 +48,8 @@
     --good: #6cbb87;
     --watch: #d7a949;
     --crit: #e88072;
+    --overlay-bone: #f4f8f8;
+    --overlay-weak: #63797c;
   }
 }
 
@@ -286,6 +292,11 @@ button {
   opacity: 0;
 }
 
+.overlay {
+  position: absolute;
+  pointer-events: none;
+}
+
 .readout {
   position: absolute;
   top: 0.6rem;
@@ -467,6 +478,54 @@ button {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0.6rem;
+}
+
+/* ------------------------------------------------------------- analysis -- */
+
+.analyze {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.7rem 0.75rem;
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  background: var(--ground);
+}
+
+.analyze-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.mono-note {
+  font-family: var(--mono);
+  font-size: 0.625rem;
+  letter-spacing: 0.06em;
+  color: var(--ink-mute);
+  line-height: 1.5;
+}
+.mono-note.error {
+  color: var(--crit);
+}
+
+.meter {
+  height: 4px;
+  background: var(--sunken);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.meter i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.12s linear;
+}
+
+.tbtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .keyhint {

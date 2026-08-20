@@ -60,17 +60,28 @@ export function supportsFrameCallback(video: HTMLVideoElement): boolean {
   return getRvfc(video) !== null;
 }
 
+/**
+ * Pulls a noisy measurement onto a rate a camera actually shoots.
+ *
+ * Whole rates beat NTSC ones inside the tolerance window even when the NTSC
+ * rate is marginally nearer. A phone shooting 240 that measures 239.4 is
+ * closer to 239.76, but reporting "239.76 fps" for footage the camera app
+ * labelled 240 reads as a bug, and this tool is asking you to trust its
+ * numbers. The cost is misreporting genuine 29.97 broadcast footage as 30 —
+ * a 0.1% error, which over a two-second swing is a sixteenth of a frame.
+ */
 export function snapToCommonRate(raw: number): number {
-  let best = raw;
-  let bestError = Infinity;
-  for (const rate of COMMON_RATES) {
-    const error = Math.abs(rate - raw) / rate;
-    if (error < bestError) {
-      bestError = error;
-      best = rate;
-    }
-  }
-  return bestError <= SNAP_TOLERANCE ? best : Math.round(raw * 100) / 100;
+  const within = COMMON_RATES.filter(
+    (rate) => Math.abs(rate - raw) / rate <= SNAP_TOLERANCE,
+  );
+  if (within.length === 0) return Math.round(raw * 100) / 100;
+
+  const whole = within.filter((rate) => Number.isInteger(rate));
+  const pool = whole.length > 0 ? whole : within;
+
+  return pool.reduce((best, rate) =>
+    Math.abs(rate - raw) < Math.abs(best - raw) ? rate : best,
+  );
 }
 
 function median(values: number[]): number {

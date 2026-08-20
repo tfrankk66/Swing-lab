@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
+  <rect width="192" height="192" fill="#0d1416"/>
+  <!-- swing plane line -->
+  <line x1="140" y1="158" x2="58" y2="44" stroke="#48beca" stroke-width="5" stroke-dasharray="14 10" stroke-linecap="round"/>
+  <!-- shaft -->
+  <line x1="88" y1="96" x2="140" y2="158" stroke="#e2eaea" stroke-width="8" stroke-linecap="round"/>
+  <!-- clubhead -->
+  <circle cx="140" cy="158" r="10" fill="#f0913f"/>
+  <!-- hands -->
+  <circle cx="88" cy="96" r="9" fill="#e2eaea"/>
+</svg>

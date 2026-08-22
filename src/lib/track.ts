@@ -49,6 +49,13 @@ export interface SwingTrack {
   seekMs: number;
   /** Time spent downscaling and running the model. */
   detectMs: number;
+  /** Frames the streaming pass detected without seeking. */
+  streamed: number;
+  /** Frames the streaming pass skipped, recovered afterwards by seeking. */
+  filled: number;
+  /** Frames the streaming pass skipped over, counted as it went. Drives the
+   *  playback-rate backoff; `filled` is the authoritative count. */
+  missed: number;
 }
 
 export const IMAGE_STRIDE = LANDMARK_COUNT * 4;

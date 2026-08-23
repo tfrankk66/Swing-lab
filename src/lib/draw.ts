@@ -108,9 +108,12 @@ export function readTheme(element: HTMLElement): OverlayTheme {
   const value = (name: string, fallback: string) =>
     styles.getPropertyValue(name).trim() || fallback;
   return {
-    bone: value("--overlay-bone", "#e2eaea"),
-    joint: value("--accent", "#48beca"),
-    weak: value("--overlay-weak", "#7b9093"),
-    spine: value("--tracer", "#f0913f"),
+    // Fallbacks are the palette's own values, for the case where the custom
+    // properties have not resolved yet — a stale fallback is a skeleton drawn
+    // in last season's colours on the first frame after load.
+    bone: value("--overlay-bone", "#fbfbff"),
+    joint: value("--accent", "#01baef"),
+    weak: value("--overlay-weak", "#8fa3a9"),
+    spine: value("--tracer", "#20bf55"),
   };
 }

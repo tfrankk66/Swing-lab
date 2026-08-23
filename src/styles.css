@@ -1,19 +1,36 @@
-/* Swing Lab — phone-first. Tokens mirror the build-plan artifact. */
+/* Swing Lab — phone-first. Tokens mirror the build-plan artifact.
+ *
+ * Palette: 20BF55 green, 0B4F6C deep teal, 01BAEF cyan, FBFBFF near-white,
+ * 757575 grey. Roles rather than a swatch each: teal is structure, cyan is the
+ * playhead, green is good news, grey is everything spoken quietly.
+ *
+ * The palette colours are used raw wherever they sit on a background dark
+ * enough to carry them, and darkened where they have to be read as text on
+ * near-white — 20BF55 on FBFBFF is 2.2:1, which is fine for a swatch and not
+ * for the ten-pixel uppercase mono the chips are set in.
+ *
+ * Amber and red are not in the palette and are derived, because "needs
+ * watching" and "wrong" are states the app has to be able to say and no
+ * arrangement of green, teal and cyan says them.
+ */
 
 :root {
-  --ground: #e9eded;
-  --surface: #fafcfc;
-  --sunken: #dfe5e5;
-  --ink: #141f22;
-  --ink-soft: #43575b;
-  --ink-mute: #6c8084;
-  --rule: #c6d2d3;
-  --rule-soft: #d8e0e0;
-  --accent: #0b6c77;
-  --accent-ink: #ffffff;
-  --accent-soft: #e0eef0;
-  --tracer: #b8520f;
-  --good: #35704a;
+  --ground: #eceef4;
+  --surface: #fbfbff; /* palette */
+  --sunken: #dfe3ec;
+  --ink: #0a3446; /* deep teal, darkened for body text */
+  --ink-soft: #40606f;
+  --ink-mute: #757575; /* palette */
+  --rule: #c7d0d7;
+  --rule-soft: #dee3e9;
+  --accent: #0b4f6c; /* palette */
+  --accent-ink: #fbfbff; /* palette */
+  --accent-soft: #dae8f0;
+  /* Green, not cyan, and deliberately. The playhead has to be findable at a
+     glance against the teal and cyan the rest of the interface is built from,
+     and green is the only hue in the palette that is not one of those two. */
+  --tracer: #17a34a;
+  --good: #12873c; /* palette green, darkened for text contrast */
   --watch: #8a6210;
   --crit: #a2372a;
 
@@ -22,9 +39,10 @@
   --body: Charter, "Bitstream Charter", "Iowan Old Style", Georgia, serif;
   --mono: ui-monospace, "Cascadia Mono", Consolas, "SF Mono", Menlo, monospace;
 
-  /* Overlay ink. Separate from body text: it sits on video, not on paper. */
-  --overlay-bone: #f4f8f8;
-  --overlay-weak: #8aa0a3;
+  /* Overlay ink. Separate from body text: it sits on video, not on paper, so
+     it does not change with the theme — the footage is the background. */
+  --overlay-bone: #fbfbff;
+  --overlay-weak: #8fa3a9;
 
   --tap: 2.75rem; /* minimum comfortable touch target */
   --safe-b: env(safe-area-inset-bottom, 0px);
@@ -33,23 +51,25 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --ground: #0d1416;
-    --surface: #141e21;
-    --sunken: #0a1113;
-    --ink: #e2eaea;
-    --ink-soft: #a9bcbe;
-    --ink-mute: #7b9093;
-    --rule: #29393d;
-    --rule-soft: #1e2c2f;
-    --accent: #48beca;
-    --accent-ink: #08181b;
-    --accent-soft: #102a2e;
-    --tracer: #f0913f;
-    --good: #6cbb87;
+    /* Ground and surface are the palette teal taken down until text sits on
+       it comfortably; the hue is what carries the brand, not the lightness. */
+    --ground: #061a23;
+    --surface: #0b3040;
+    --sunken: #04141b;
+    --ink: #eaf4f8;
+    --ink-soft: #a8c2cc;
+    --ink-mute: #8a9ba1; /* palette grey, lifted to clear the dark ground */
+    --rule: #17414f;
+    --rule-soft: #0f2e3a;
+    --accent: #01baef; /* palette cyan, which only gets to be loud here */
+    --accent-ink: #04212b;
+    --accent-soft: #0a3b4e;
+    --tracer: #20bf55; /* palette green, raw */
+    --good: #2fd46a; /* lifted a step so it is not the playhead's exact green */
     --watch: #d7a949;
     --crit: #e88072;
-    --overlay-bone: #f4f8f8;
-    --overlay-weak: #63797c;
+    --overlay-bone: #fbfbff;
+    --overlay-weak: #6b8288;
   }
 }
 
@@ -393,8 +413,10 @@ button {
   font-family: var(--mono);
   font-size: 0.5625rem;
   letter-spacing: 0.08em;
-  color: var(--tracer);
-  opacity: 0.9;
+  /* Grey, not the mark's own green: at this size the label needs text
+     contrast, and the line beside it already carries the colour. */
+  color: var(--ink-mute);
+  opacity: 1;
 }
 
 .handle {

@@ -152,6 +152,8 @@ export default function App() {
     const onKey = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       if (target && /^(INPUT|TEXTAREA)$/.test(target.tagName)) return;
+      // Detection owns the video while it runs. See onStagePointerDown.
+      if (pose.running) return;
 
       const jump = event.shiftKey ? 10 : 1;
       switch (event.key) {
@@ -192,6 +194,10 @@ export default function App() {
   const dragRef = useRef<{ x: number; frame: number } | null>(null);
 
   const onStagePointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    // Detection drives the video element itself. Letting the stage seek at the
+    // same time fights it, and the playhead readout is frozen meanwhile, so the
+    // scrub would look broken even where it worked.
+    if (pose.running) return;
     videoRef.current?.pause();
     dragRef.current = { x: event.clientX, frame };
     event.currentTarget.setPointerCapture(event.pointerId);
@@ -268,11 +274,20 @@ export default function App() {
           stageRef={stageRef}
         />
         <div className="readout">
-          <span className="big">
-            {frame}
-            <span style={{ opacity: 0.5 }}> / {Math.max(0, total - 1)}</span>
-          </span>
-          <span>{formatClock(time)}</span>
+          {pose.running ? (
+            // The playhead loop is stopped during detection, so the frame
+            // number here would be whatever it was when the run started.
+            // Showing that stale number reads as a frozen player.
+            <span className="big">analysing…</span>
+          ) : (
+            <>
+              <span className="big">
+                {frame}
+                <span style={{ opacity: 0.5 }}> / {Math.max(0, total - 1)}</span>
+              </span>
+              <span>{formatClock(time)}</span>
+            </>
+          )}
           <span>{trimmedRealMs.toFixed(0)} ms trimmed</span>
         </div>
         <div className={scrubbed ? "stage-hint hidden" : "stage-hint"}>
@@ -286,25 +301,54 @@ export default function App() {
           frame={frame}
           trimIn={trim.in}
           trimOut={trim.out}
+          disabled={pose.running}
           onScrub={seek}
           onTrimIn={(f) => setTrim((t) => ({ ...t, in: f }))}
           onTrimOut={(f) => setTrim((t) => ({ ...t, out: f }))}
         />
 
+        {/* Every control here drives the video element, which detection owns
+            while it runs. Disabled rather than left live and ignored: a
+            transport that responds to nothing is the same thing as a broken
+            one from the other side of the screen. */}
         <div className="transport">
-          <button className="tbtn" onClick={() => step(-10)} aria-label="Back ten frames">
+          <button
+            className="tbtn"
+            onClick={() => step(-10)}
+            disabled={pose.running}
+            aria-label="Back ten frames"
+          >
             ⏮ 10
           </button>
-          <button className="tbtn" onClick={() => step(-1)} aria-label="Back one frame">
+          <button
+            className="tbtn"
+            onClick={() => step(-1)}
+            disabled={pose.running}
+            aria-label="Back one frame"
+          >
             ◀
           </button>
-          <button className="tbtn primary" onClick={togglePlay}>
-            {playing ? "Pause" : "Play"}
+          <button
+            className="tbtn primary"
+            onClick={togglePlay}
+            disabled={pose.running}
+          >
+            {pose.running ? "Analysing" : playing ? "Pause" : "Play"}
           </button>
-          <button className="tbtn" onClick={() => step(1)} aria-label="Forward one frame">
+          <button
+            className="tbtn"
+            onClick={() => step(1)}
+            disabled={pose.running}
+            aria-label="Forward one frame"
+          >
             ▶
           </button>
-          <button className="tbtn" onClick={() => step(10)} aria-label="Forward ten frames">
+          <button
+            className="tbtn"
+            onClick={() => step(10)}
+            disabled={pose.running}
+            aria-label="Forward ten frames"
+          >
             10 ⏭
           </button>
         </div>

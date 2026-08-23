@@ -5,6 +5,8 @@ interface Props {
   frame: number;
   trimIn: number;
   trimOut: number;
+  /** True while detection owns the video and scrubbing it would fight the pass. */
+  disabled?: boolean;
   onScrub: (frame: number) => void;
   onTrimIn: (frame: number) => void;
   onTrimOut: (frame: number) => void;
@@ -23,6 +25,7 @@ export function Timeline({
   frame,
   trimIn,
   trimOut,
+  disabled = false,
   onScrub,
   onTrimIn,
   onTrimOut,
@@ -47,6 +50,7 @@ export function Timeline({
   };
 
   const onPointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    if (disabled) return;
     const at = frameAt(event.clientX);
     const rect = trackRef.current?.getBoundingClientRect();
     const width = rect?.width ?? 1;
@@ -75,7 +79,7 @@ export function Timeline({
 
   return (
     <div
-      className="timeline"
+      className={disabled ? "timeline is-disabled" : "timeline"}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={release}

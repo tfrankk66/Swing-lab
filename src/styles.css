@@ -341,6 +341,11 @@ button {
   -webkit-user-select: none;
 }
 
+.timeline.is-disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
 .track {
   position: absolute;
   inset: 1rem 0 auto;

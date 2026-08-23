@@ -51,9 +51,7 @@ export function AnalyzePanel({
           <span className="rowlabel" style={{ margin: 0 }}>
             {progress.stage === "loading-model"
               ? "Loading model"
-              : `${
-                  progress.stage === "filling" ? "Filling gaps" : "Detecting"
-                } · ${progress.done} / ${progress.total}`}
+              : `Detecting · ${progress.done} / ${progress.total}`}
           </span>
           <span className="mono-note">
             {remaining !== null ? `~${remaining}s left` : "…"}
@@ -104,8 +102,6 @@ export function AnalyzePanel({
           <br />
           seek {seekPerFrame.toFixed(0)} ms · detect{" "}
           {detectPerFrame.toFixed(0)} ms — {bound}-bound
-          <br />
-          {track.streamed} streamed · {track.filled} seeked back for
           {gaps > 0 && " · gap frames show no skeleton"}
         </p>
       </div>

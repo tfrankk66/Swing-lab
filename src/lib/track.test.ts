@@ -54,9 +54,6 @@ function makeTrack(count: number, missing: number[] = []): SwingTrack {
     elapsedMs: 1000,
     seekMs: 400,
     detectMs: 600,
-    streamed: count,
-    filled: 0,
-    missed: 0,
   };
 }
 

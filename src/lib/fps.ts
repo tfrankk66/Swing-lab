@@ -43,7 +43,7 @@ interface FrameMeta {
 type RvfcCallback = (now: number, meta: FrameMeta) => void;
 
 /** Returns a bound `requestVideoFrameCallback`, or null where it isn't supported (Firefox). */
-export function getRvfc(video: HTMLVideoElement) {
+function getRvfc(video: HTMLVideoElement) {
   const el = video as unknown as Record<string, unknown>;
   const request = el["requestVideoFrameCallback"];
   const cancel = el["cancelVideoFrameCallback"];

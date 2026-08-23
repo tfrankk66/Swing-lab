@@ -17,3 +17,15 @@ tsconfig.tsbuildinfo
 # MediaPipe WASM runtime, both reproducible from node_modules and upstream.
 public/models/
 public/mediapipe/
+
+# Swing clips. They are input, never source: large, and footage of a person
+# that has no business leaving the machine it was filmed on.
+*.mov
+*.mp4
+*.m4v
+*.avi
+*.hevc
+
+# Claude Code's local state, including worktrees — which are entire working
+# copies of this repository, nested inside it.
+.claude/

@@ -26,8 +26,24 @@ import {
   windowAround,
 } from "./lib/frames";
 import { maxAnalysisFrames } from "./lib/analysis";
+import { versionLabel } from "./version";
 
 const SPEEDS = [1, 0.5, 0.25, 0.1];
+
+/**
+ * Slow-motion factor assumed until told otherwise.
+ *
+ * Not measurable: a phone shooting 240fps writes a 60fps container with the
+ * slowdown rendered in, and that file is identical to genuine 60fps footage as
+ * far as the browser is concerned. Four is the phone slow-mo case, which is
+ * every clip this tool is pointed at right now — a 60fps container times four
+ * is the 240fps of real-world sampling the measurements want.
+ *
+ * Wrong for a clip filmed at normal speed, and there is no way to tell from
+ * here. v0.3 infers it from the detected swing length instead, at which point
+ * this default stops mattering.
+ */
+const DEFAULT_SLOWDOWN = 4;
 /** Drag distance on the video that advances one frame. Deliberately slow. */
 const PX_PER_FRAME = 8;
 
@@ -39,7 +55,7 @@ export default function App() {
   const [duration, setDuration] = useState(0);
   const [rate, setRate] = useState<FrameRateResult | null>(null);
   const [measuring, setMeasuring] = useState(false);
-  const [slowdown, setSlowdown] = useState(1);
+  const [slowdown, setSlowdown] = useState(DEFAULT_SLOWDOWN);
   const [trim, setTrim] = useState({ in: 0, out: 0 });
   const [loop, setLoop] = useState(true);
   const [speed, setSpeed] = useState(0.25);
@@ -243,7 +259,12 @@ export default function App() {
           }
           onClick={() => setSheetOpen(true)}
         >
-          {measuring ? "measuring…" : `${fps} fps · ${slowdown}×`}
+          {/* The effective rate, not the container rate. 60fps of container at
+              4x slow motion samples the real world 240 times a second, and it
+              is that number the impact measurements live or die by. */}
+          {measuring
+            ? "measuring…"
+            : `${Math.round(effective)} fps · ${slowdown}×`}
         </button>
         <button className="chip is-button" onClick={closeClip}>
           New clip
@@ -444,7 +465,7 @@ function Topbar({ children }: { children?: ReactNode }) {
         Swing<em>Lab</em>
       </span>
       <div className="chipset">
-        {children ?? <span className="chip">v0.1 · player</span>}
+        {children ?? <span className="chip">{versionLabel()}</span>}
       </div>
     </div>
   );

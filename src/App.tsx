@@ -23,7 +23,9 @@ import {
   frameToTime,
   seekToFrame,
   timeToFrame,
+  windowAround,
 } from "./lib/frames";
+import { maxAnalysisFrames } from "./lib/analysis";
 
 const SPEEDS = [1, 0.5, 0.25, 0.1];
 /** Drag distance on the video that advances one frame. Deliberately slow. */
@@ -125,6 +127,11 @@ export default function App() {
     },
     [frame, seek],
   );
+
+  /** Narrows the trim to the longest analysable window around the playhead. */
+  const trimToWindow = useCallback(() => {
+    setTrim(windowAround(frame, maxAnalysisFrames(fps), total));
+  }, [frame, fps, total]);
 
   const togglePlay = useCallback(() => {
     const video = videoRef.current;
@@ -342,6 +349,7 @@ export default function App() {
           error={pose.error}
           quality={quality}
           frames={trimmedFrames}
+          fps={fps}
           overlayOn={overlayOn}
           onQuality={setQuality}
           onRun={() =>
@@ -349,6 +357,7 @@ export default function App() {
           }
           onCancel={pose.cancel}
           onToggleOverlay={() => setOverlayOn((v) => !v)}
+          onTrimToWindow={trimToWindow}
         />
 
         <div className="keyhint">

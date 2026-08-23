@@ -33,6 +33,27 @@ export function seekToFrame(
   if (Number.isFinite(target)) video.currentTime = target;
 }
 
+/**
+ * A window of `span` frames centred on `centre`, slid to fit inside the clip.
+ *
+ * Centred rather than starting at the playhead because you park on impact —
+ * the moment you can actually recognise scrubbing past — and the swing runs
+ * both ways from there. Near either end the window slides instead of
+ * shrinking, so a short clip still gets the full span it asked for.
+ */
+export function windowAround(
+  centre: number,
+  span: number,
+  total: number,
+): { in: number; out: number } {
+  if (total <= 0 || span <= 0) return { in: 0, out: 0 };
+  const width = Math.min(span, total);
+  let start = Math.round(centre - (width - 1) / 2);
+  start = Math.min(start, total - width);
+  start = Math.max(0, start);
+  return { in: start, out: start + width - 1 };
+}
+
 /** `1:04.28` — minutes, seconds, hundredths. */
 export function formatClock(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds < 0) return "0:00.00";

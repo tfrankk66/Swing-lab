@@ -7,6 +7,7 @@ import {
   frameToTime,
   impactResolutionCm,
   timeToFrame,
+  windowAround,
 } from "./frames";
 import { snapToCommonRate } from "./fps";
 
@@ -96,5 +97,45 @@ describe("clock", () => {
   it("does not render nonsense for bad input", () => {
     expect(formatClock(NaN)).toBe("0:00.00");
     expect(formatClock(-3)).toBe("0:00.00");
+  });
+});
+
+describe("analysis window", () => {
+  it("centres the span on the playhead", () => {
+    expect(windowAround(500, 101, 5946)).toEqual({ in: 450, out: 550 });
+  });
+
+  it("returns exactly the span asked for", () => {
+    const w = windowAround(500, 360, 5946);
+    expect(w.out - w.in + 1).toBe(360);
+  });
+
+  it("slides rather than shrinks at the start", () => {
+    const w = windowAround(10, 360, 5946);
+    expect(w).toEqual({ in: 0, out: 359 });
+  });
+
+  it("slides rather than shrinks at the end", () => {
+    const w = windowAround(5940, 360, 5946);
+    expect(w).toEqual({ in: 5586, out: 5945 });
+  });
+
+  it("clamps to the clip when the span outruns it", () => {
+    // A 200-frame clip cannot give you fifteen seconds of anything.
+    expect(windowAround(50, 3600, 200)).toEqual({ in: 0, out: 199 });
+  });
+
+  it("stays inside the clip wherever the playhead is", () => {
+    for (const centre of [0, 1, 99, 100, 199]) {
+      const w = windowAround(centre, 60, 200);
+      expect(w.in).toBeGreaterThanOrEqual(0);
+      expect(w.out).toBeLessThanOrEqual(199);
+      expect(w.out - w.in + 1).toBe(60);
+    }
+  });
+
+  it("refuses nonsense rather than inverting the range", () => {
+    expect(windowAround(5, 60, 0)).toEqual({ in: 0, out: 0 });
+    expect(windowAround(5, 0, 200)).toEqual({ in: 0, out: 0 });
   });
 });

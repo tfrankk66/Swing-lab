@@ -1,9 +1,10 @@
-import type { AnalysisProgress } from "../lib/analysis";
+import {
+  MAX_ANALYSIS_SECONDS,
+  maxAnalysisFrames,
+  type AnalysisProgress,
+} from "../lib/analysis";
 import { MODEL_NOTES, type ModelQuality } from "../lib/pose";
 import { coverage, type SwingTrack } from "../lib/track";
-
-/** Frames past which the trim is almost certainly still the whole clip. */
-const LONG_RANGE = 900;
 
 interface Props {
   track: SwingTrack | null;
@@ -11,11 +12,15 @@ interface Props {
   error: string | null;
   quality: ModelQuality;
   frames: number;
+  /** Measured rate of the clip, to turn the frame cap into seconds. */
+  fps: number;
   overlayOn: boolean;
   onQuality: (quality: ModelQuality) => void;
   onRun: () => void;
   onCancel: () => void;
   onToggleOverlay: () => void;
+  /** Narrows the trim to the longest analysable window around the playhead. */
+  onTrimToWindow: () => void;
 }
 
 export function AnalyzePanel({
@@ -24,11 +29,13 @@ export function AnalyzePanel({
   error,
   quality,
   frames,
+  fps,
   overlayOn,
   onQuality,
   onRun,
   onCancel,
   onToggleOverlay,
+  onTrimToWindow,
 }: Props) {
   if (progress) {
     const pct =
@@ -105,10 +112,12 @@ export function AnalyzePanel({
     );
   }
 
-  // A swing is a second and a half. Anything past a few hundred frames means
-  // the trim is still around the whole clip, and the pass will take minutes
-  // detecting a golfer walking to the tee.
-  const oversized = frames > LONG_RANGE;
+  // Cost is one model call per frame, so it scales with the range and no
+  // decode trick changes that. Past the cap the run is refused rather than
+  // started and abandoned twenty minutes later.
+  const cap = maxAnalysisFrames(fps);
+  const overCap = cap > 0 && frames > cap;
+  const seconds = fps > 0 ? frames / fps : 0;
 
   return (
     <div className="analyze">
@@ -116,31 +125,46 @@ export function AnalyzePanel({
         <span className="rowlabel" style={{ margin: 0 }}>
           Pose detection
         </span>
-        <span className={oversized ? "chip warn" : "mono-note"}>
-          {frames} frames trimmed
+        <span className={overCap ? "chip warn" : "mono-note"}>
+          {frames} frames · {seconds.toFixed(1)}s
         </span>
       </div>
-      {oversized && (
-        <p className="mono-note">
-          That is the whole clip, not the swing. Set the trim with I and O
-          around the swing first — every frame in the range costs a model call.
-        </p>
-      )}
-      <div className="rates">
-        {(["lite", "full"] as const).map((value) => (
-          <button
-            key={value}
-            className={quality === value ? "on" : ""}
-            onClick={() => onQuality(value)}
-          >
-            {value}
+      {overCap ? (
+        <>
+          <p className="mono-note">
+            Capped at {MAX_ANALYSIS_SECONDS}s, and the trim is {seconds.toFixed(0)}s.
+            Every frame is a model call, so the whole clip would take minutes.
+            Park the playhead on impact and take a window around it — a swing
+            needs about two seconds, and {MAX_ANALYSIS_SECONDS} leaves room for
+            the address and the finish.
+          </p>
+          <button className="tbtn primary" onClick={onTrimToWindow}>
+            Trim to {MAX_ANALYSIS_SECONDS}s around the playhead
           </button>
-        ))}
-      </div>
-      <p className="mono-note">{MODEL_NOTES[quality]}</p>
-      <button className="tbtn primary" onClick={onRun} disabled={frames < 2}>
-        Find the body
-      </button>
+        </>
+      ) : (
+        <>
+          <div className="rates">
+            {(["lite", "full"] as const).map((value) => (
+              <button
+                key={value}
+                className={quality === value ? "on" : ""}
+                onClick={() => onQuality(value)}
+              >
+                {value}
+              </button>
+            ))}
+          </div>
+          <p className="mono-note">{MODEL_NOTES[quality]}</p>
+          <button
+            className="tbtn primary"
+            onClick={onRun}
+            disabled={frames < 2}
+          >
+            Find the body
+          </button>
+        </>
+      )}
       {error && <p className="mono-note error">{error}</p>}
     </div>
   );

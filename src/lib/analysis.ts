@@ -51,6 +51,23 @@ const MAX_BUDGET_MS = 400;
 /** Give up on streaming if no frame presents for this long, and go seek instead. */
 const STALL_MS = 3000;
 
+/**
+ * Longest span of clip the detection pass will accept, in seconds of media.
+ *
+ * Every frame in the range is a model call of tens of milliseconds, so cost is
+ * linear in the range and nothing about the decode path changes that. A swing
+ * is about a second and a half; fifteen seconds is loose enough to hold an
+ * address, a waggle and a follow-through without the trim having to be
+ * surgical, and short enough that the pass finishes while you wait.
+ */
+export const MAX_ANALYSIS_SECONDS = 15;
+
+/** Frames that span covers at a given rate, which is what the trim is measured in. */
+export function maxAnalysisFrames(fps: number): number {
+  if (!Number.isFinite(fps) || fps <= 0) return 0;
+  return Math.max(1, Math.round(MAX_ANALYSIS_SECONDS * fps));
+}
+
 interface FrameMeta {
   mediaTime: number;
 }

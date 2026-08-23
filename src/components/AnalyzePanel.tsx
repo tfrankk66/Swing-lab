@@ -4,10 +4,14 @@ import {
   type AnalysisProgress,
 } from "../lib/analysis";
 import { MODEL_NOTES, type ModelQuality } from "../lib/pose";
+import type { SwingPhases } from "../lib/phases";
 import { coverage, type SwingTrack } from "../lib/track";
 
 interface Props {
   track: SwingTrack | null;
+  /** Address, top and impact, once a track exists to find them in. */
+  phases: SwingPhases | null;
+  onSeekFrame: (frame: number) => void;
   progress: AnalysisProgress | null;
   error: string | null;
   quality: ModelQuality;
@@ -25,6 +29,8 @@ interface Props {
 
 export function AnalyzePanel({
   track,
+  phases,
+  onSeekFrame,
   progress,
   error,
   quality,
@@ -96,6 +102,42 @@ export function AnalyzePanel({
             Re-run
           </button>
         </div>
+
+        {phases && (
+          <>
+            <div className="rowlabel">
+              Swing phases
+              {!phases.confident && (
+                <span className="chip warn" style={{ marginLeft: "0.5rem" }}>
+                  unsure
+                </span>
+              )}
+            </div>
+            <div className="rates">
+              {(
+                [
+                  ["P1", phases.p1, "address"],
+                  ["P4", phases.p4, "top"],
+                  ["P7", phases.p7, "impact"],
+                ] as const
+              ).map(([name, at, what]) => (
+                <button
+                  key={name}
+                  onClick={() => onSeekFrame(at)}
+                  title={`${what} — frame ${at}`}
+                >
+                  {name}
+                </button>
+              ))}
+            </div>
+            <p className="mono-note">
+              {phases.confident
+                ? `address ${phases.p1} · top ${phases.p4} · impact ${phases.p7}`
+                : // Backswing not slower than downswing, or nothing moved.
+                  "This does not look like a full swing — the phases below are a best guess, not something to measure against."}
+            </p>
+          </>
+        )}
         <p className="mono-note">
           {track.quality} model on {track.delegate} at {track.analyzedWidth}
           &times;{track.analyzedHeight} · {perFrame.toFixed(0)} ms per frame

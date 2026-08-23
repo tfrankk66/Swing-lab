@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type PointerEvent,
@@ -26,6 +27,8 @@ import {
   windowAround,
 } from "./lib/frames";
 import { maxAnalysisFrames } from "./lib/analysis";
+import { smoothTrack } from "./lib/smooth";
+import { detectPhases } from "./lib/phases";
 import { versionLabel } from "./version";
 
 const SPEEDS = [1, 0.5, 0.25, 0.1];
@@ -65,6 +68,16 @@ export default function App() {
   const [overlayOn, setOverlayOn] = useState(true);
 
   const pose = usePoseTrack(videoRef);
+
+  // The raw track is kept as the model returned it; everything downstream
+  // reads the smoothed copy. Phase detection especially: it works by finding
+  // where a trajectory peaks and reverses, and per-frame jitter invents
+  // reversals that were never in the swing.
+  const track = useMemo(
+    () => (pose.track ? smoothTrack(pose.track) : null),
+    [pose.track],
+  );
+  const phases = useMemo(() => (track ? detectPhases(track) : null), [track]);
 
   const fps = rate?.fps ?? 30;
   const total = frameCount(duration, fps);
@@ -288,7 +301,7 @@ export default function App() {
           onLoadedMetadata={(e) => void onLoadedMetadata(e.currentTarget)}
         />
         <Overlay
-          track={pose.track}
+          track={track}
           frame={frame}
           visible={overlayOn}
           videoRef={videoRef}
@@ -323,6 +336,15 @@ export default function App() {
           trimIn={trim.in}
           trimOut={trim.out}
           disabled={pose.running}
+          marks={
+            phases
+              ? [
+                  { frame: phases.p1, label: "P1" },
+                  { frame: phases.p4, label: "P4" },
+                  { frame: phases.p7, label: "P7" },
+                ]
+              : []
+          }
           onScrub={seek}
           onTrimIn={(f) => setTrim((t) => ({ ...t, in: f }))}
           onTrimOut={(f) => setTrim((t) => ({ ...t, out: f }))}
@@ -409,7 +431,9 @@ export default function App() {
         </div>
 
         <AnalyzePanel
-          track={pose.track}
+          track={track}
+          phases={phases}
+          onSeekFrame={seek}
           progress={pose.progress}
           error={pose.error}
           quality={quality}

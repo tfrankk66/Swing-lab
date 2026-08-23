@@ -7,6 +7,8 @@ interface Props {
   trimOut: number;
   /** True while detection owns the video and scrubbing it would fight the pass. */
   disabled?: boolean;
+  /** Absolute frames to mark on the track — address, top, impact. */
+  marks?: ReadonlyArray<{ frame: number; label: string }>;
   onScrub: (frame: number) => void;
   onTrimIn: (frame: number) => void;
   onTrimOut: (frame: number) => void;
@@ -26,6 +28,7 @@ export function Timeline({
   trimIn,
   trimOut,
   disabled = false,
+  marks = [],
   onScrub,
   onTrimIn,
   onTrimOut,
@@ -91,6 +94,15 @@ export function Timeline({
           style={{ left: pct(trimIn), right: `${100 - (trimOut / last) * 100}%` }}
         />
       </div>
+      {marks.map((mark) => (
+        <div
+          key={mark.label}
+          className="phasemark"
+          style={{ left: pct(mark.frame) }}
+        >
+          <span>{mark.label}</span>
+        </div>
+      ))}
       <div className="playhead" style={{ left: pct(frame) }} />
       <div className="handle" style={{ left: pct(trimIn) }}>
         <span>IN</span>

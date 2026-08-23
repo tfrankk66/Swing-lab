@@ -375,6 +375,28 @@ button {
   border-radius: 1px;
 }
 
+/* Phase marks sit below the track so they never cover the trim handles. */
+.phasemark {
+  position: absolute;
+  top: 1.9rem;
+  bottom: 0;
+  width: 1px;
+  margin-left: -0.5px;
+  background: var(--tracer);
+  opacity: 0.55;
+  pointer-events: none;
+}
+.phasemark span {
+  position: absolute;
+  bottom: -0.1rem;
+  left: 0.15rem;
+  font-family: var(--mono);
+  font-size: 0.5625rem;
+  letter-spacing: 0.08em;
+  color: var(--tracer);
+  opacity: 0.9;
+}
+
 .handle {
   position: absolute;
   top: 0.35rem;

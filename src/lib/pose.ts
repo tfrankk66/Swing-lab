@@ -1,4 +1,4 @@
-import { FilesetResolver, PoseLandmarker } from "@mediapipe/tasks-vision";
+import type { PoseLandmarker } from "@mediapipe/tasks-vision";
 
 /**
  * Pose landmarker setup.
@@ -6,6 +6,20 @@ import { FilesetResolver, PoseLandmarker } from "@mediapipe/tasks-vision";
  * Everything is served from our own origin rather than MediaPipe's CDN, so the
  * app still works at a range with no signal. `scripts/prepare-assets.mjs` puts
  * the WASM and the weights in place.
+ *
+ * ## Why the library is imported dynamically
+ *
+ * `@mediapipe/tasks-vision` is 155KB of the bundle, and none of it is needed
+ * to load a clip, scrub it, trim it or read the contact sheet — only to press
+ * *Find the body*. A static import puts all of it in the first chunk, which is
+ * the one that has to arrive over a bad connection before anything works.
+ *
+ * The import above is `import type`, so it is erased at build time and costs
+ * nothing; the real module is fetched inside `build()`, the first time a
+ * landmarker is actually asked for. Nothing downstream changes: `build()` was
+ * already async and already behind the "loading model" progress stage, and by
+ * the time this fetch happens the app is about to download 15MB of model
+ * weights anyway, so one more JS chunk is not what anybody is waiting for.
  */
 
 export type ModelQuality = "lite" | "full";
@@ -32,7 +46,9 @@ let pending: Promise<LandmarkerHandle> | null = null;
 let pendingQuality: ModelQuality | null = null;
 
 async function build(quality: ModelQuality): Promise<LandmarkerHandle> {
-  const fileset = await FilesetResolver.forVisionTasks("/mediapipe");
+  // The one place the library is actually fetched. See the note at the top.
+  const vision = await import("@mediapipe/tasks-vision");
+  const fileset = await vision.FilesetResolver.forVisionTasks("/mediapipe");
 
   const options = (delegate: "GPU" | "CPU") => ({
     baseOptions: {
@@ -52,14 +68,14 @@ async function build(quality: ModelQuality): Promise<LandmarkerHandle> {
   });
 
   try {
-    const landmarker = await PoseLandmarker.createFromOptions(
+    const landmarker = await vision.PoseLandmarker.createFromOptions(
       fileset,
       options("GPU"),
     );
     return { landmarker, quality, delegate: "GPU" };
   } catch {
     // Older mobile Safari and locked-down GPU drivers land here.
-    const landmarker = await PoseLandmarker.createFromOptions(
+    const landmarker = await vision.PoseLandmarker.createFromOptions(
       fileset,
       options("CPU"),
     );

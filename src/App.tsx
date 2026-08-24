@@ -7,13 +7,28 @@ import {
   type PointerEvent,
   type ReactNode,
 } from "react";
+import {
+  Badge,
+  Button,
+  Group,
+  Paper,
+  SegmentedControl,
+  SimpleGrid,
+  Stack,
+  Text,
+  Title,
+} from "@mantine/core";
 import { Intake } from "./components/Intake";
 import { Timeline } from "./components/Timeline";
 import { CaptureSheet } from "./components/CaptureSheet";
 import { Overlay } from "./components/Overlay";
 import { AnalyzePanel } from "./components/AnalyzePanel";
+import { Filmstrip } from "./components/Filmstrip";
+import { LogBook } from "./components/LogBook";
+import { Transport } from "./components/Transport";
 import { usePlayhead } from "./hooks/usePlayhead";
 import { usePoseTrack } from "./hooks/usePoseTrack";
+import { useFilmstrip } from "./hooks/useFilmstrip";
 import { detectFrameRate, type FrameRateResult } from "./lib/fps";
 import type { ModelQuality } from "./lib/pose";
 import {
@@ -29,6 +44,9 @@ import {
 import { maxAnalysisFrames } from "./lib/analysis";
 import { smoothTrack } from "./lib/smooth";
 import { detectPhases } from "./lib/phases";
+import { inferSlowdown } from "./lib/slowmo";
+import { computeMetrics } from "./lib/metrics";
+import { DEFAULT_REFERENCES, type ReferenceOptions } from "./lib/draw";
 import { versionLabel } from "./version";
 
 const SPEEDS = [1, 0.5, 0.25, 0.1];
@@ -42,11 +60,30 @@ const SPEEDS = [1, 0.5, 0.25, 0.1];
  * every clip this tool is pointed at right now — a 60fps container times four
  * is the 240fps of real-world sampling the measurements want.
  *
- * Wrong for a clip filmed at normal speed, and there is no way to tell from
- * here. v0.3 infers it from the detected swing length instead, at which point
- * this default stops mattering.
+ * Wrong for a clip filmed at normal speed, and nothing in the file says so.
+ * It only has to hold until a pose track exists: `inferSlowdown` then reads
+ * the factor off the detected downswing and replaces this, unless the user
+ * has already set one by hand.
  */
 const DEFAULT_SLOWDOWN = 4;
+
+/**
+ * Where the slow-motion factor currently in force came from.
+ *
+ * The ranking matters more than the labels: a factor the user typed outranks
+ * one measured off the swing, which outranks the assumption above. Without
+ * that, a re-run of detection would quietly overwrite a deliberate override
+ * with a guess, and the number every impact measurement rests on would change
+ * under someone who had already told the app what it was.
+ */
+type SlowdownSource = "assumed" | "inferred" | "manual";
+
+/** Prefix on the factor in the topbar chip, saying which of the three it is. */
+const SLOWDOWN_MARK: Record<SlowdownSource, string> = {
+  assumed: "~",
+  inferred: "=",
+  manual: "",
+};
 /** Drag distance on the video that advances one frame. Deliberately slow. */
 const PX_PER_FRAME = 8;
 
@@ -59,6 +96,8 @@ export default function App() {
   const [rate, setRate] = useState<FrameRateResult | null>(null);
   const [measuring, setMeasuring] = useState(false);
   const [slowdown, setSlowdown] = useState(DEFAULT_SLOWDOWN);
+  const [slowdownSource, setSlowdownSource] =
+    useState<SlowdownSource>("assumed");
   const [trim, setTrim] = useState({ in: 0, out: 0 });
   const [loop, setLoop] = useState(true);
   const [speed, setSpeed] = useState(0.25);
@@ -66,6 +105,8 @@ export default function App() {
   const [scrubbed, setScrubbed] = useState(false);
   const [quality, setQuality] = useState<ModelQuality>("full");
   const [overlayOn, setOverlayOn] = useState(true);
+  const [references, setReferences] =
+    useState<ReferenceOptions>(DEFAULT_REFERENCES);
 
   const pose = usePoseTrack(videoRef);
 
@@ -80,6 +121,26 @@ export default function App() {
   const phases = useMemo(() => (track ? detectPhases(track) : null), [track]);
 
   const fps = rate?.fps ?? 30;
+
+  // Nine readings taken at the three phases. Cheap — plane geometry on a
+  // dozen landmarks — so it recomputes with the track rather than on demand.
+  const metrics = useMemo(
+    () => computeMetrics(track, phases),
+    [track, phases],
+  );
+
+  // The swing is the clock the slow-motion factor is read off. See slowmo.ts.
+  const slowdownEstimate = useMemo(
+    () => inferSlowdown(phases, fps),
+    [phases, fps],
+  );
+
+  useEffect(() => {
+    if (slowdownSource === "manual") return;
+    if (!slowdownEstimate?.confident) return;
+    setSlowdown(slowdownEstimate.factor);
+    setSlowdownSource("inferred");
+  }, [slowdownEstimate, slowdownSource]);
   const total = frameCount(duration, fps);
   const { time, playing } = usePlayhead(
     videoRef,
@@ -88,6 +149,17 @@ export default function App() {
     !pose.running,
   );
   const frame = clampFrame(timeToFrame(time, fps), total);
+
+  const filmstrip = useFilmstrip({
+    src,
+    fps,
+    trimIn: trim.in,
+    trimOut: trim.out,
+    phases,
+    // Both passes seek, and a decoder asked to be in two places at once
+    // serves neither. Detection is the one with a progress bar attached.
+    enabled: !pose.running,
+  });
 
   /* ------------------------------------------------------------- loading */
 
@@ -100,6 +172,11 @@ export default function App() {
     setDuration(0);
     setTrim({ in: 0, out: 0 });
     setScrubbed(false);
+    // A new clip is a new camera setting. Carrying the last clip's factor
+    // over — inferred or typed — is how you measure one swing with another
+    // swing's shutter.
+    setSlowdown(DEFAULT_SLOWDOWN);
+    setSlowdownSource("assumed");
     pose.clear();
   };
 
@@ -262,26 +339,40 @@ export default function App() {
   return (
     <div className="app">
       <Topbar>
-        <button
-          className={
+        <Badge
+          component="button"
+          size="sm"
+          radius="sm"
+          variant="light"
+          ff="monospace"
+          style={{ cursor: "pointer" }}
+          color={
             measuring
-              ? "chip is-button"
-              : rate?.source === "measured"
-                ? "chip is-button good"
-                : "chip is-button warn"
+              ? "gray"
+              : // Both halves have to be known for the effective rate to mean
+                // anything. A measured container rate multiplied by a guessed
+                // factor is a guess, and it used to show green.
+                rate?.source === "measured" && slowdownSource !== "assumed"
+                ? "signal"
+                : "yellow"
           }
           onClick={() => setSheetOpen(true)}
         >
           {/* The effective rate, not the container rate. 60fps of container at
               4x slow motion samples the real world 240 times a second, and it
-              is that number the impact measurements live or die by. */}
+              is that number the impact measurements live or die by.
+
+              The factor carries a mark for where it came from, because the
+              three cases are not equally trustworthy and the badge is the only
+              place that difference is visible: ~ assumed, = measured off the
+              swing, and nothing at all once a human has said so. */}
           {measuring
             ? "measuring…"
-            : `${Math.round(effective)} fps · ${slowdown}×`}
-        </button>
-        <button className="chip is-button" onClick={closeClip}>
+            : `${Math.round(effective)} fps · ${SLOWDOWN_MARK[slowdownSource]}${slowdown}×`}
+        </Badge>
+        <Button size="compact-sm" variant="default" onClick={closeClip}>
           New clip
-        </button>
+        </Button>
       </Topbar>
 
       <div
@@ -304,32 +395,69 @@ export default function App() {
           track={track}
           frame={frame}
           visible={overlayOn}
+          phases={phases}
+          references={references}
           videoRef={videoRef}
           stageRef={stageRef}
         />
-        <div className="readout">
-          {pose.running ? (
-            // The playhead loop is stopped during detection, so the frame
-            // number here would be whatever it was when the run started.
-            // Showing that stale number reads as a frozen player.
-            <span className="big">analysing…</span>
-          ) : (
-            <>
-              <span className="big">
-                {frame}
-                <span style={{ opacity: 0.5 }}> / {Math.max(0, total - 1)}</span>
-              </span>
-              <span>{formatClock(time)}</span>
-            </>
-          )}
-          <span>{trimmedRealMs.toFixed(0)} ms trimmed</span>
-        </div>
-        <div className={scrubbed ? "stage-hint hidden" : "stage-hint"}>
+        <Paper
+          className="readout"
+          radius="sm"
+          px="xs"
+          py={6}
+          bg="light-dark(rgba(255,255,255,0.82), rgba(0,0,0,0.62))"
+        >
+          <Stack gap={1}>
+            {pose.running ? (
+              // The playhead loop is stopped during detection, so the frame
+              // number here would be whatever it was when the run started.
+              // Showing that stale number reads as a frozen player.
+              <Text ff="heading" fw={700} size="lg" lh={1.1}>
+                analysing…
+              </Text>
+            ) : (
+              <>
+                <Text ff="heading" fw={700} size="lg" lh={1.1}>
+                  {frame}
+                  <Text span inherit c="dimmed">
+                    {" "}
+                    / {Math.max(0, total - 1)}
+                  </Text>
+                </Text>
+                <Text size="xs" ff="monospace" c="dimmed">
+                  {formatClock(time)}
+                </Text>
+              </>
+            )}
+            <Text size="xs" ff="monospace" c="dimmed">
+              {trimmedRealMs.toFixed(0)} ms trimmed
+            </Text>
+          </Stack>
+        </Paper>
+
+        <Text
+          className="stage-hint"
+          data-hidden={scrubbed || undefined}
+          size="xs"
+          ff="monospace"
+          tt="uppercase"
+          c="dimmed"
+        >
           Drag across the video to step frames
-        </div>
+        </Text>
       </div>
 
-      <div className="controls">
+      <Stack
+        className="controls"
+        gap="sm"
+        px="md"
+        pt="sm"
+        style={{
+          flex: "none",
+          borderTop: "1px solid var(--mantine-color-default-border)",
+          background: "var(--mantine-color-body)",
+        }}
+      >
         <Timeline
           total={total}
           frame={frame}
@@ -350,89 +478,63 @@ export default function App() {
           onTrimOut={(f) => setTrim((t) => ({ ...t, out: f }))}
         />
 
-        {/* Every control here drives the video element, which detection owns
-            while it runs. Disabled rather than left live and ignored: a
-            transport that responds to nothing is the same thing as a broken
-            one from the other side of the screen. */}
-        <div className="transport">
-          <button
-            className="tbtn"
-            onClick={() => step(-10)}
-            disabled={pose.running}
-            aria-label="Back ten frames"
-          >
-            ⏮ 10
-          </button>
-          <button
-            className="tbtn"
-            onClick={() => step(-1)}
-            disabled={pose.running}
-            aria-label="Back one frame"
-          >
-            ◀
-          </button>
-          <button
-            className="tbtn primary"
-            onClick={togglePlay}
-            disabled={pose.running}
-          >
-            {pose.running ? "Analysing" : playing ? "Pause" : "Play"}
-          </button>
-          <button
-            className="tbtn"
-            onClick={() => step(1)}
-            disabled={pose.running}
-            aria-label="Forward one frame"
-          >
-            ▶
-          </button>
-          <button
-            className="tbtn"
-            onClick={() => step(10)}
-            disabled={pose.running}
-            aria-label="Forward ten frames"
-          >
-            10 ⏭
-          </button>
-        </div>
+        <Stack gap={6}>
+          <Label>Contact sheet{filmstrip.running ? " · building" : ""}</Label>
+          <Filmstrip
+            thumbs={filmstrip.thumbs}
+            running={filmstrip.running}
+            frame={frame}
+            onSeekFrame={seek}
+          />
+        </Stack>
 
-        <div className="split">
-          <div>
-            <div className="rowlabel">Playback speed</div>
-            <div className="rates">
-              {SPEEDS.map((value) => (
-                <button
-                  key={value}
-                  className={speed === value ? "on" : ""}
-                  onClick={() => setSpeed(value)}
-                >
-                  {value}×
-                </button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <div className="rowlabel">Trim · {trimmedFrames} frames</div>
-            <div className="split">
-              <button
-                className={loop ? "tbtn on" : "tbtn"}
+        <Transport
+          playing={playing}
+          busy={pose.running}
+          onStep={step}
+          onTogglePlay={togglePlay}
+        />
+
+        <SimpleGrid cols={2} spacing="sm">
+          <Stack gap={6}>
+            <Label>Playback speed</Label>
+            <SegmentedControl
+              fullWidth
+              size="xs"
+              value={String(speed)}
+              onChange={(value) => setSpeed(Number(value))}
+              data={SPEEDS.map((value) => ({
+                value: String(value),
+                label: `${value}×`,
+              }))}
+            />
+          </Stack>
+          <Stack gap={6}>
+            <Label>Trim · {trimmedFrames} frames</Label>
+            <SimpleGrid cols={2} spacing={6}>
+              <Button
+                size="xs"
+                variant={loop ? "light" : "default"}
                 onClick={() => setLoop((v) => !v)}
               >
                 Loop {loop ? "on" : "off"}
-              </button>
-              <button
-                className="tbtn"
+              </Button>
+              <Button
+                size="xs"
+                variant="default"
                 onClick={() => setTrim({ in: 0, out: Math.max(1, total) - 1 })}
               >
                 Reset
-              </button>
-            </div>
-          </div>
-        </div>
+              </Button>
+            </SimpleGrid>
+          </Stack>
+        </SimpleGrid>
 
         <AnalyzePanel
           track={track}
           phases={phases}
+          slowdown={slowdownEstimate}
+          slowdownApplied={slowdownSource === "inferred"}
           onSeekFrame={seek}
           progress={pose.progress}
           error={pose.error}
@@ -447,17 +549,32 @@ export default function App() {
           onCancel={pose.cancel}
           onToggleOverlay={() => setOverlayOn((v) => !v)}
           onTrimToWindow={trimToWindow}
+          references={references}
+          onToggleReference={(which) =>
+            setReferences((r) => ({ ...r, [which]: !r[which] }))
+          }
         />
 
-        <div className="keyhint">
+        <LogBook metrics={metrics} hasTrack={track !== null} onSeekFrame={seek} />
+
+        {/* Hidden on touch, where none of it is reachable. */}
+        <Text
+          size="xs"
+          ff="monospace"
+          c="dimmed"
+          ta="center"
+          tt="uppercase"
+          visibleFrom="sm"
+        >
           space play · ← → frame · shift+← → ten · i in · o out · l loop
-        </div>
-      </div>
+        </Text>
+      </Stack>
 
       {sheetOpen && rate && (
         <CaptureSheet
           rate={rate}
           slowdown={slowdown}
+          estimate={slowdownEstimate}
           onApply={(nextFps, nextSlowdown) => {
             setRate({
               fps: nextFps,
@@ -466,6 +583,9 @@ export default function App() {
               slowPass: false,
             });
             setSlowdown(nextSlowdown);
+            // Typed beats measured beats assumed: from here on, re-running
+            // detection must not move this number back.
+            setSlowdownSource("manual");
             setTrim({
               in: 0,
               out: Math.max(1, frameCount(duration, nextFps)) - 1,
@@ -482,15 +602,42 @@ export default function App() {
   );
 }
 
+/** Small caps label above a control group. Used often enough to name. */
+function Label({ children }: { children: ReactNode }) {
+  return (
+    <Text size="xs" c="dimmed" tt="uppercase" ff="monospace" lts="0.1em">
+      {children}
+    </Text>
+  );
+}
+
 function Topbar({ children }: { children?: ReactNode }) {
   return (
-    <div className="topbar">
-      <span className="wordmark">
-        Swing<em>Lab</em>
-      </span>
-      <div className="chipset">
-        {children ?? <span className="chip">{versionLabel()}</span>}
-      </div>
-    </div>
+    <Group
+      className="topbar"
+      justify="space-between"
+      wrap="nowrap"
+      px="md"
+      pb="xs"
+      gap="xs"
+      style={{
+        flex: "none",
+        borderBottom: "1px solid var(--mantine-color-default-border)",
+      }}
+    >
+      <Title order={1} size="h4" tt="uppercase" lts="0.03em" style={{ whiteSpace: "nowrap" }}>
+        Swing
+        <Text span inherit c="var(--mantine-primary-color-filled)">
+          Lab
+        </Text>
+      </Title>
+      <Group gap={6} wrap="nowrap">
+        {children ?? (
+          <Badge size="sm" radius="sm" variant="default" ff="monospace">
+            {versionLabel()}
+          </Badge>
+        )}
+      </Group>
+    </Group>
   );
 }

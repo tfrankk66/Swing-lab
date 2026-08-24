@@ -1,81 +1,31 @@
-/* Swing Lab — phone-first. Tokens mirror the build-plan artifact.
+/* Swing Lab — what is left after Mantine.
  *
- * Palette: 20BF55 green, 0B4F6C deep teal, 01BAEF cyan, FBFBFF near-white,
- * 757575 grey. Roles rather than a swatch each: teal is structure, cyan is the
- * playhead, green is good news, grey is everything spoken quietly.
+ * Everything that used to be in this file and is now a component prop is
+ * gone: buttons, badges, panels, the modal, the segmented controls, spacing,
+ * type scale and both colour-scheme blocks all live in `theme.ts` and in the
+ * components themselves.
  *
- * The palette colours are used raw wherever they sit on a background dark
- * enough to carry them, and darkened where they have to be read as text on
- * near-white — 20BF55 on FBFBFF is 2.2:1, which is fine for a swatch and not
- * for the ten-pixel uppercase mono the chips are set in.
- *
- * Amber and red are not in the palette and are derived, because "needs
- * watching" and "wrong" are states the app has to be able to say and no
- * arrangement of green, teal and cyan says them.
+ * What remains is the three things a component library has no opinion about —
+ * a video and the canvas pinned on top of it, a bespoke pointer surface for
+ * scrubbing and trimming, and the palette the canvas draws in. All of it is
+ * written against Mantine's CSS variables so it still follows the theme and
+ * the colour scheme without a second copy of the palette.
  */
 
 :root {
-  --ground: #eceef4;
-  --surface: #fbfbff; /* palette */
-  --sunken: #dfe3ec;
-  --ink: #0a3446; /* deep teal, darkened for body text */
-  --ink-soft: #40606f;
-  --ink-mute: #757575; /* palette */
-  --rule: #c7d0d7;
-  --rule-soft: #dee3e9;
-  --accent: #0b4f6c; /* palette */
-  --accent-ink: #fbfbff; /* palette */
-  --accent-soft: #dae8f0;
-  /* Green, not cyan, and deliberately. The playhead has to be findable at a
-     glance against the teal and cyan the rest of the interface is built from,
-     and green is the only hue in the palette that is not one of those two. */
-  --tracer: #17a34a;
-  --good: #12873c; /* palette green, darkened for text contrast */
-  --watch: #8a6210;
-  --crit: #a2372a;
-
-  --display: "Bahnschrift", "DIN Alternate", "Avenir Next Condensed",
-    "Roboto Condensed", "Arial Narrow", ui-sans-serif, sans-serif;
-  --body: Charter, "Bitstream Charter", "Iowan Old Style", Georgia, serif;
-  --mono: ui-monospace, "Cascadia Mono", Consolas, "SF Mono", Menlo, monospace;
-
-  /* Overlay ink. Separate from body text: it sits on video, not on paper, so
-     it does not change with the theme — the footage is the background. */
+  /* Overlay ink. Separate from the theme on purpose: this sits on video, not
+     on the page, so it must not follow the colour scheme — the footage is the
+     background either way, and a skeleton that goes dark-on-dark at night is
+     worse than one that is always bone white. `readTheme` reads these at draw
+     time so the values live in one place rather than two. */
   --overlay-bone: #fbfbff;
   --overlay-weak: #8fa3a9;
+  --overlay-guide: #e0b25c;
+  --overlay-joint: var(--mantine-color-brand-4);
+  --overlay-spine: var(--mantine-color-signal-4);
 
-  --tap: 2.75rem; /* minimum comfortable touch target */
   --safe-b: env(safe-area-inset-bottom, 0px);
   --safe-t: env(safe-area-inset-top, 0px);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    /* Ground and surface are the palette teal taken down until text sits on
-       it comfortably; the hue is what carries the brand, not the lightness. */
-    --ground: #061a23;
-    --surface: #0b3040;
-    --sunken: #04141b;
-    --ink: #eaf4f8;
-    --ink-soft: #a8c2cc;
-    --ink-mute: #8a9ba1; /* palette grey, lifted to clear the dark ground */
-    --rule: #17414f;
-    --rule-soft: #0f2e3a;
-    --accent: #01baef; /* palette cyan, which only gets to be loud here */
-    --accent-ink: #04212b;
-    --accent-soft: #0a3b4e;
-    --tracer: #20bf55; /* palette green, raw */
-    --good: #2fd46a; /* lifted a step so it is not the playhead's exact green */
-    --watch: #d7a949;
-    --crit: #e88072;
-    --overlay-bone: #fbfbff;
-    --overlay-weak: #6b8288;
-  }
-}
-
-* {
-  box-sizing: border-box;
-  margin: 0;
 }
 
 html,
@@ -85,29 +35,7 @@ body,
 }
 
 body {
-  background: var(--ground);
-  color: var(--ink);
-  font-family: var(--body);
-  font-size: 16px;
-  line-height: 1.5;
-  -webkit-font-smoothing: antialiased;
   overscroll-behavior: none;
-}
-
-button {
-  font: inherit;
-  color: inherit;
-  background: none;
-  border: 0;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
-}
-
-:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-  border-radius: 2px;
 }
 
 /* ---------------------------------------------------------------- shell -- */
@@ -118,155 +46,19 @@ button {
   height: 100%;
   max-width: 34rem;
   margin: 0 auto;
-  background: var(--ground);
+  background: var(--mantine-color-body);
 }
 
 .topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  padding: calc(0.5rem + var(--safe-t)) 0.9rem 0.5rem;
-  border-bottom: 1px solid var(--rule);
-  flex: none;
+  padding-top: calc(var(--mantine-spacing-xs) + var(--safe-t));
 }
 
-.wordmark {
-  font-family: var(--display);
-  font-size: 1.05rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
+.controls {
+  padding-bottom: calc(var(--mantine-spacing-sm) + var(--safe-b));
 }
-.wordmark em {
-  font-style: normal;
-  color: var(--accent);
-}
-
-.chipset {
-  display: flex;
-  gap: 0.35rem;
-  align-items: center;
-}
-
-.chip {
-  font-family: var(--mono);
-  font-size: 0.625rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  padding: 0.3rem 0.45rem;
-  border: 1px solid var(--rule);
-  border-radius: 2px;
-  color: var(--ink-mute);
-  white-space: nowrap;
-  background: var(--surface);
-}
-.chip.is-button:hover {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-.chip.good {
-  border-color: var(--good);
-  color: var(--good);
-}
-.chip.warn {
-  border-color: var(--watch);
-  color: var(--watch);
-}
-
-/* --------------------------------------------------------------- intake -- */
 
 .intake {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-  justify-content: center;
-  padding: 1.5rem 1.1rem calc(1.5rem + var(--safe-b));
-}
-
-.dropzone {
-  border: 1px dashed var(--rule);
-  border-radius: 3px;
-  background: var(--surface);
-  padding: 2.25rem 1.25rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.75rem;
-  text-align: center;
-  transition: border-color 0.15s, background 0.15s;
-  width: 100%;
-}
-.dropzone.over {
-  border-color: var(--accent);
-  border-style: solid;
-  background: var(--accent-soft);
-}
-.dropzone h1 {
-  font-family: var(--display);
-  font-size: 1.5rem;
-  text-transform: uppercase;
-  letter-spacing: 0.01em;
-  font-weight: 700;
-  line-height: 1.05;
-}
-.dropzone p {
-  font-size: 0.9375rem;
-  color: var(--ink-soft);
-  max-width: 30ch;
-}
-
-.btn {
-  font-family: var(--display);
-  font-size: 0.9375rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  font-weight: 700;
-  padding: 0 1.1rem;
-  height: var(--tap);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 2px;
-  background: var(--accent);
-  color: var(--accent-ink);
-}
-.btn.ghost {
-  background: none;
-  color: var(--ink);
-  border: 1px solid var(--rule);
-}
-.btn.ghost:hover {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
-.shotlist {
-  border: 1px solid var(--rule);
-  border-radius: 3px;
-  background: var(--surface);
-  padding: 0.9rem 1rem;
-}
-.shotlist h2 {
-  font-family: var(--mono);
-  font-size: 0.625rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--ink-mute);
-  font-weight: 400;
-  margin-bottom: 0.6rem;
-}
-.shotlist ol {
-  padding-left: 1.1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-  font-size: 0.875rem;
-  color: var(--ink-soft);
-}
-.shotlist b {
-  color: var(--ink);
+  padding-bottom: calc(var(--mantine-spacing-xl) + var(--safe-b));
 }
 
 /* --------------------------------------------------------------- viewer -- */
@@ -275,7 +67,10 @@ button {
   position: relative;
   flex: 1;
   min-height: 0;
-  background: var(--sunken);
+  background: light-dark(
+    var(--mantine-color-gray-2),
+    var(--mantine-color-dark-8)
+  );
   display: flex;
   align-items: center;
   justify-content: center;
@@ -292,136 +87,156 @@ button {
   display: block;
 }
 
-.stage-hint {
-  position: absolute;
-  left: 50%;
-  bottom: 0.6rem;
-  transform: translateX(-50%);
-  font-family: var(--mono);
-  font-size: 0.625rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--ink-mute);
-  background: color-mix(in srgb, var(--ground) 80%, transparent);
-  padding: 0.25rem 0.5rem;
-  border-radius: 2px;
-  pointer-events: none;
-  transition: opacity 0.25s;
-}
-.stage-hint.hidden {
-  opacity: 0;
-}
-
+/* Sized and positioned onto the video's box from JavaScript every time either
+   changes — see Overlay.tsx on why this is measured rather than guessed at. */
 .overlay {
   position: absolute;
   pointer-events: none;
 }
 
+.stage-hint,
 .readout {
   position: absolute;
-  top: 0.6rem;
-  left: 0.6rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-  font-family: var(--mono);
-  font-size: 0.6875rem;
-  letter-spacing: 0.06em;
-  color: var(--ink-soft);
-  background: color-mix(in srgb, var(--ground) 78%, transparent);
-  padding: 0.35rem 0.5rem;
-  border-radius: 2px;
   pointer-events: none;
-  font-variant-numeric: tabular-nums;
 }
-.readout .big {
-  font-family: var(--display);
-  font-size: 1.15rem;
-  letter-spacing: 0.02em;
-  color: var(--ink);
+
+.stage-hint {
+  left: 50%;
+  bottom: var(--mantine-spacing-xs);
+  transform: translateX(-50%);
+  transition: opacity 0.25s;
+}
+.stage-hint[data-hidden] {
+  opacity: 0;
+}
+
+.readout {
+  top: var(--mantine-spacing-xs);
+  left: var(--mantine-spacing-xs);
+  font-variant-numeric: tabular-nums;
 }
 
 /* ------------------------------------------------------------- timeline -- */
 
-.controls {
-  flex: none;
-  border-top: 1px solid var(--rule);
-  background: var(--surface);
-  padding: 0.75rem 0.9rem calc(0.75rem + var(--safe-b));
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
+/* The one genuinely bespoke control. Mantine has a Slider, but this surface
+   carries three draggable targets that share a hit area and pick a winner by
+   proximity, plus phase marks and graduations — none of which a Slider does,
+   and all of which Timeline.tsx already handles. */
 
 .timeline {
   position: relative;
-  height: 3rem;
+  height: 3.4rem;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
 }
 
-.timeline.is-disabled {
+.timeline[data-disabled] {
   opacity: 0.45;
   cursor: default;
 }
 
+/* Graduations, so frames can be counted against the track without reading the
+   number. A gradient rather than elements: a long clip wants one every few
+   pixels and none of them needs to be addressable. */
+.scalebar {
+  position: absolute;
+  inset: 0.3rem 0 auto;
+  height: 0.42rem;
+  background: repeating-linear-gradient(
+    to right,
+    var(--mantine-color-default-border) 0 1px,
+    transparent 1px var(--tick-gap, 10%)
+  );
+  pointer-events: none;
+}
+.scalebar::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 1px;
+  background: var(--mantine-color-default-border);
+}
+
 .track {
   position: absolute;
-  inset: 1rem 0 auto;
+  inset: 1.15rem 0 auto;
   height: 1rem;
-  background: var(--sunken);
-  border: 1px solid var(--rule);
-  border-radius: 2px;
+  background: light-dark(
+    var(--mantine-color-gray-2),
+    var(--mantine-color-dark-6)
+  );
+  border: 1px solid var(--mantine-color-default-border);
+  border-radius: var(--mantine-radius-sm);
 }
 
 .track-active {
   position: absolute;
   top: 0;
   bottom: 0;
-  background: var(--accent-soft);
-  border-left: 1px solid var(--accent);
-  border-right: 1px solid var(--accent);
+  background: light-dark(
+    var(--mantine-color-brand-1),
+    var(--mantine-color-brand-9)
+  );
+  border-left: 1px solid var(--mantine-primary-color-filled);
+  border-right: 1px solid var(--mantine-primary-color-filled);
 }
 
 .playhead {
   position: absolute;
-  top: 0.55rem;
-  bottom: 0.55rem;
+  top: 0.95rem;
+  bottom: 1.05rem;
   width: 2px;
   margin-left: -1px;
-  background: var(--tracer);
+  background: var(--mantine-color-signal-filled);
   pointer-events: none;
-  border-radius: 1px;
+}
+/* A pennant at the head, so the playhead is findable at a glance rather than
+   hunted for among the marks and handles sharing the same strip. */
+.playhead::before {
+  content: "";
+  position: absolute;
+  top: -0.32rem;
+  left: -0.28rem;
+  border-left: 0.3rem solid transparent;
+  border-right: 0.3rem solid transparent;
+  border-top: 0.36rem solid var(--mantine-color-signal-filled);
 }
 
 /* Phase marks sit below the track so they never cover the trim handles. */
 .phasemark {
   position: absolute;
-  top: 1.9rem;
+  top: 2.35rem;
   bottom: 0;
   width: 1px;
   margin-left: -0.5px;
-  background: var(--tracer);
-  opacity: 0.55;
+  background: var(--mantine-color-dimmed);
   pointer-events: none;
+}
+.phasemark::before {
+  content: "";
+  position: absolute;
+  top: -0.26rem;
+  left: -0.22rem;
+  width: 0.45rem;
+  height: 0.45rem;
+  transform: rotate(45deg);
+  border: 1px solid var(--mantine-color-dimmed);
+  background: var(--mantine-color-body);
 }
 .phasemark span {
   position: absolute;
-  bottom: -0.1rem;
-  left: 0.15rem;
-  font-family: var(--mono);
+  bottom: -0.15rem;
+  left: 0.3rem;
+  font-family: var(--mantine-font-family-monospace);
   font-size: 0.5625rem;
   letter-spacing: 0.08em;
-  /* Grey, not the mark's own green: at this size the label needs text
-     contrast, and the line beside it already carries the colour. */
-  color: var(--ink-mute);
-  opacity: 1;
+  color: var(--mantine-color-dimmed);
 }
 
 .handle {
   position: absolute;
-  top: 0.35rem;
+  top: 0.5rem;
   height: 2.3rem;
   width: 2.25rem;
   margin-left: -1.125rem;
@@ -434,239 +249,69 @@ button {
   content: "";
   width: 3px;
   height: 100%;
-  background: var(--accent);
-  border-radius: 2px;
+  background: var(--mantine-primary-color-filled);
+  border-radius: var(--mantine-radius-xs);
 }
 .handle span {
   position: absolute;
-  top: -0.85rem;
-  font-family: var(--mono);
+  top: -0.95rem;
+  font-family: var(--mantine-font-family-monospace);
   font-size: 0.5625rem;
   letter-spacing: 0.1em;
-  color: var(--accent);
+  color: var(--mantine-primary-color-filled);
 }
 
-.transport {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.35rem;
-}
+/* ------------------------------------------------------------ filmstrip -- */
 
-.tbtn {
-  height: var(--tap);
-  min-width: var(--tap);
-  padding: 0 0.5rem;
-  border: 1px solid var(--rule);
-  border-radius: 2px;
-  background: var(--surface);
-  font-family: var(--mono);
-  font-size: 0.75rem;
-  letter-spacing: 0.04em;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--ink-soft);
-}
-.tbtn:hover {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-.tbtn:active {
-  background: var(--accent-soft);
-}
-.tbtn.primary {
-  background: var(--accent);
-  color: var(--accent-ink);
-  border-color: var(--accent);
-  flex: 1;
-  font-family: var(--display);
-  font-size: 0.9375rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-.tbtn.on {
-  border-color: var(--accent);
-  color: var(--accent);
-  background: var(--accent-soft);
-}
-
-.rates {
-  display: flex;
-  gap: 1px;
-  background: var(--rule);
-  border: 1px solid var(--rule);
-  border-radius: 2px;
-  overflow: hidden;
-}
-.rates button {
-  flex: 1;
-  height: 2.25rem;
-  background: var(--surface);
-  font-family: var(--mono);
-  font-size: 0.6875rem;
-  letter-spacing: 0.04em;
-  color: var(--ink-mute);
-}
-.rates button.on {
-  background: var(--accent);
-  color: var(--accent-ink);
-}
-
-.rowlabel {
-  font-family: var(--mono);
-  font-size: 0.5625rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--ink-mute);
-  margin-bottom: 0.3rem;
-}
-
-.split {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.6rem;
-}
-
-/* ------------------------------------------------------------- analysis -- */
-
-.analyze {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  padding: 0.7rem 0.75rem;
-  border: 1px solid var(--rule);
-  border-radius: 2px;
-  background: var(--ground);
-}
-
-.analyze-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-}
-
-.mono-note {
-  font-family: var(--mono);
-  font-size: 0.625rem;
-  letter-spacing: 0.06em;
-  color: var(--ink-mute);
-  line-height: 1.5;
-}
-.mono-note.error {
-  color: var(--crit);
-}
-
-.meter {
-  height: 4px;
-  background: var(--sunken);
-  border-radius: 2px;
-  overflow: hidden;
-}
-.meter i {
+/* Mantine's ScrollArea provides the box; these size the stills inside it,
+   which it has no way to know about. */
+.filmcell img {
   display: block;
-  height: 100%;
-  background: var(--accent);
-  transition: width 0.12s linear;
+  height: 3.6rem;
+  width: auto;
 }
 
-.tbtn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
+.filmcell-pending {
+  flex: none;
+  width: 2.4rem;
+  height: 3.6rem;
+  border-radius: var(--mantine-radius-xs);
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--mantine-color-default-border) 0 3px,
+    transparent 3px 6px
+  );
 }
 
-.keyhint {
-  font-family: var(--mono);
-  font-size: 0.5625rem;
-  letter-spacing: 0.08em;
-  color: var(--ink-mute);
-  text-align: center;
-  text-transform: uppercase;
-}
-@media (pointer: coarse) {
-  .keyhint {
-    display: none;
-  }
-}
+/* --------------------------------------------------------------- metrics -- */
 
-/* --------------------------------------------------------------- dialog -- */
-
-.sheet {
-  position: fixed;
-  inset: 0;
-  background: color-mix(in srgb, var(--sunken) 72%, transparent);
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  z-index: 20;
-  padding: 1rem;
-  padding-bottom: calc(1rem + var(--safe-b));
-}
-.sheet-body {
-  background: var(--surface);
-  border: 1px solid var(--rule);
-  border-radius: 3px;
-  width: 100%;
-  max-width: 30rem;
-  padding: 1.1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.85rem;
-}
-.sheet-body h2 {
-  font-family: var(--display);
-  font-size: 1.15rem;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-}
-.sheet-body p {
-  font-size: 0.875rem;
-  color: var(--ink-soft);
-}
-.rategrid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 0.4rem;
-}
-.rategrid button {
-  height: var(--tap);
-  border: 1px solid var(--rule);
+/* The band a reading is expected to fall in, drawn under the row it belongs
+   to. A number on its own says nothing about whether it is a hair outside or
+   nowhere near, and those are different lessons. */
+.logband {
+  position: relative;
+  height: 3px;
   border-radius: 2px;
-  font-family: var(--mono);
-  font-size: 0.8125rem;
-  font-variant-numeric: tabular-nums;
-  color: var(--ink-soft);
+  background: light-dark(
+    var(--mantine-color-gray-3),
+    var(--mantine-color-dark-4)
+  );
+  overflow: hidden;
 }
-.rategrid button.on {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--accent-ink);
+.logband i {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: var(--mantine-color-signal-filled);
+  opacity: 0.5;
 }
-
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-}
-.field label {
-  font-family: var(--mono);
-  font-size: 0.5625rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--ink-mute);
-}
-.field input {
-  font: inherit;
-  font-family: var(--mono);
-  font-size: 0.9375rem;
-  padding: 0.5rem 0.6rem;
-  background: var(--ground);
-  border: 1px solid var(--rule);
-  border-radius: 2px;
-  color: var(--ink);
-  width: 100%;
+.logband b {
+  position: absolute;
+  top: -1px;
+  bottom: -1px;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--mantine-color-text);
 }
 
 @media (prefers-reduced-motion: reduce) {

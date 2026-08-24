@@ -16,11 +16,38 @@ interface Props {
 
 type Grab = "scrub" | "in" | "out";
 
+/** Graduations aimed for on the scale bar. A chart scale is legible because
+ *  it has enough ticks to count against and few enough to see past. */
+const TARGET_TICKS = 24;
+
+/**
+ * Chooses a tick spacing in frames from the 1/2/5 series.
+ *
+ * Graduating every `total / 24` frames gives spacings like 7 and 13, which
+ * read as noise — a scale you cannot count in your head is decoration. The
+ * 1/2/5 series is what every chart and every oscilloscope graticule uses,
+ * for the same reason.
+ */
+export function tickStep(total: number, target = TARGET_TICKS): number {
+  if (total <= 0 || target <= 0) return 1;
+  const raw = total / target;
+  if (raw <= 1) return 1;
+  const magnitude = 10 ** Math.floor(Math.log10(raw));
+  const normalised = raw / magnitude;
+  const step = normalised <= 1 ? 1 : normalised <= 2 ? 2 : normalised <= 5 ? 5 : 10;
+  return step * magnitude;
+}
+
 /**
  * Scrub track with trim handles. One pointer surface handles all three
  * targets: whichever is nearest to the initial press wins the drag, so the
  * handles stay grabbable at thumb size without overlapping hit areas fighting
  * each other.
+ *
+ * Deliberately not a Mantine Slider. A Slider is one value on one track; this
+ * carries a playhead, two trim handles that share a hit area and pick a
+ * winner by proximity, phase marks, and graduations. Wrapping a Slider to do
+ * that would be more code than the pointer maths below, and worse.
  */
 export function Timeline({
   total,
@@ -38,6 +65,7 @@ export function Timeline({
 
   const last = Math.max(1, total - 1);
   const pct = (f: number) => `${(f / last) * 100}%`;
+  const tickGap = `${(tickStep(last) / last) * 100}%`;
 
   const frameAt = (clientX: number): number => {
     const rect = trackRef.current?.getBoundingClientRect();
@@ -82,12 +110,17 @@ export function Timeline({
 
   return (
     <div
-      className={disabled ? "timeline is-disabled" : "timeline"}
+      className="timeline"
+      data-disabled={disabled || undefined}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={release}
       onPointerCancel={release}
     >
+      <div
+        className="scalebar"
+        style={{ "--tick-gap": tickGap } as React.CSSProperties}
+      />
       <div className="track" ref={trackRef}>
         <div
           className="track-active"

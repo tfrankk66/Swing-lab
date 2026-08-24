@@ -1,11 +1,21 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
-import { DEFAULT_OVERLAY, drawSkeleton, readTheme } from "../lib/draw";
+import {
+  DEFAULT_OVERLAY,
+  drawReferences,
+  drawSkeleton,
+  readTheme,
+  type ReferenceOptions,
+} from "../lib/draw";
+import type { SwingPhases } from "../lib/phases";
 import type { SwingTrack } from "../lib/track";
 
 interface Props {
   track: SwingTrack | null;
   frame: number;
   visible: boolean;
+  /** Address and top, which the reference lines are pinned to. */
+  phases: SwingPhases | null;
+  references: ReferenceOptions;
   videoRef: RefObject<HTMLVideoElement | null>;
   /** Positioning context the canvas is placed inside. */
   stageRef: RefObject<HTMLDivElement | null>;
@@ -23,7 +33,15 @@ interface Props {
  * The backing store is sized in device pixels; a CSS-sized canvas draws a
  * soft skeleton on any phone.
  */
-export function Overlay({ track, frame, visible, videoRef, stageRef }: Props) {
+export function Overlay({
+  track,
+  frame,
+  visible,
+  phases,
+  references,
+  videoRef,
+  stageRef,
+}: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   // Bumped by the observer to force a redraw: resizing a canvas clears it.
   const [layout, setLayout] = useState(0);
@@ -65,11 +83,26 @@ export function Overlay({ track, frame, visible, videoRef, stageRef }: Props) {
       return;
     }
 
+    const theme = readTheme(canvas);
+    // Skeleton first: it clears the canvas, and the reference lines have to
+    // sit on top of the body they are being compared against rather than
+    // under it.
     drawSkeleton(ctx, track, frame, canvas.width, canvas.height, {
       ...DEFAULT_OVERLAY,
-      theme: readTheme(canvas),
+      theme,
     });
-  }, [track, frame, visible, layout, videoRef, stageRef]);
+    if (phases) {
+      drawReferences(
+        ctx,
+        track,
+        phases,
+        canvas.width,
+        canvas.height,
+        theme,
+        references,
+      );
+    }
+  }, [track, frame, visible, phases, references, layout, videoRef, stageRef]);
 
   return <canvas ref={canvasRef} className="overlay" aria-hidden="true" />;
 }

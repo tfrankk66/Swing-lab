@@ -13,7 +13,13 @@ describe("version", () => {
   });
 
   it("renders major.minor and the phase, without the patch", () => {
-    expect(versionLabel()).toBe("v0.2 · pose");
+    // Derived from the constants rather than written out. The hardcoded
+    // "v0.2 · pose" this replaced failed on the bump to 0.3 — a test that
+    // breaks every time the thing it guards changes correctly is one people
+    // learn to edit without reading, which is how the drift started.
+    const [major, minor, patch] = VERSION.split(".");
+    expect(versionLabel()).toBe(`v${major}.${minor} · ${PHASE}`);
+    expect(versionLabel()).not.toContain(`.${patch}`);
   });
 
   it("is a three-part semver", () => {

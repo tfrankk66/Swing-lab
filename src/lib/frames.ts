@@ -67,8 +67,8 @@ export function formatClock(seconds: number): string {
  *
  * A 240fps clip written into a 30fps container plays back 8x slowed, so
  * on-screen seconds are not wall-clock seconds. `slowdown` is that factor
- * (1 = real time). v0.3 will derive it from the detected swing length; for
- * now it is whatever the user sets.
+ * (1 = real time). Since v0.4 it is inferred from the detected downswing
+ * rather than guessed at — see `slowmo.ts` — unless the user has set one.
  */
 export function realSeconds(mediaSeconds: number, slowdown: number): number {
   return slowdown > 0 ? mediaSeconds / slowdown : mediaSeconds;

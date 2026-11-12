@@ -32,4 +32,38 @@ if (typeof window !== "undefined") {
       disconnect() {}
     } as unknown as typeof ResizeObserver;
   }
+
+  // Node 22+ ships its own global `localStorage`, which is undefined (or
+  // throws) unless Node is started with --localstorage-file, and it shadows
+  // happy-dom's. The coach panel's key storage is tested against a real
+  // Storage, so give it one whenever the one in scope does not work.
+  let storageWorks = false;
+  try {
+    window.localStorage.setItem("__probe", "1");
+    window.localStorage.removeItem("__probe");
+    storageWorks = true;
+  } catch {
+    storageWorks = false;
+  }
+  if (!storageWorks) {
+    const data = new Map<string, string>();
+    const memory: Storage = {
+      get length() {
+        return data.size;
+      },
+      clear: () => data.clear(),
+      getItem: (key) => data.get(key) ?? null,
+      key: (index) => [...data.keys()][index] ?? null,
+      removeItem: (key) => void data.delete(key),
+      setItem: (key, value) => void data.set(key, String(value)),
+    };
+    Object.defineProperty(window, "localStorage", {
+      value: memory,
+      configurable: true,
+    });
+    Object.defineProperty(globalThis, "localStorage", {
+      value: memory,
+      configurable: true,
+    });
+  }
 }

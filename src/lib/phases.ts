@@ -1,4 +1,5 @@
 import { LM } from "./pose";
+import { DEFAULT_RADIUS } from "./smooth";
 import { IMAGE_STRIDE, type SwingTrack } from "./track";
 
 /**
@@ -66,6 +67,34 @@ export function handPath(track: SwingTrack): Hands {
   return { x, y, present };
 }
 
+/**
+ * Frames at each end of a track that phase detection does not read.
+ *
+ * Two reasons, and they compound. The first frame of a run is the model's
+ * cold detection — no tracking state behind it yet — so it routinely lands a
+ * little off the frames that follow. And the smoothing window shrinks to
+ * nothing at the ends (see smooth.ts), so that frame reaches us raw. The jump
+ * from it to frame two was enough to beat the real downswing as "fastest", and
+ * every phase was then built on it: a trim of 450–815 around a swing at
+ * 636/755 came back as address 450, top 450, impact 451. Same width as the
+ * smoothing radius, which is exactly the stretch that is not smoothed.
+ */
+export const EDGE_FRAMES = DEFAULT_RADIUS;
+
+/** Marks the first and last few present frames absent, if there are enough. */
+function trimEdges(hands: Hands): void {
+  const present = hands.present;
+  const indices: number[] = [];
+  for (let i = 0; i < present.length; i++) if (present[i]) indices.push(i);
+  if (indices.length <= EDGE_FRAMES * 2 + MIN_BACKSWING_FRAMES + 2) return;
+  for (const i of [
+    ...indices.slice(0, EDGE_FRAMES),
+    ...indices.slice(-EDGE_FRAMES),
+  ]) {
+    present[i] = false;
+  }
+}
+
 /** Index of the fastest hand movement between consecutive present frames. */
 function fastestFrame(hands: Hands): number {
   let best = -1;
@@ -117,6 +146,7 @@ export function detectPhases(track: SwingTrack): SwingPhases | null {
   if (track.count < MIN_BACKSWING_FRAMES + 2) return null;
 
   const hands = handPath(track);
+  trimEdges(hands);
   const first = hands.present.indexOf(true);
   if (first < 0) return null;
 

@@ -112,6 +112,18 @@ describe("LogBook", () => {
     expect(screen.getByText(/once there is a pose track/i)).toBeDefined();
   });
 
+  it("explains an ungraded swing instead of calling it unread", () => {
+    // Numbers, but phases were a guess — what a trim that starts after the
+    // takeaway produces.
+    const metrics = withReadings({ "spine-tilt": 23, tempo: 0.8 }).map((m) => ({
+      ...m,
+      verdict: "unknown" as const,
+    }));
+    wrap(<LogBook metrics={metrics} hasTrack onSeekFrame={noop} />);
+    expect(screen.getByText("not graded")).toBeDefined();
+    expect(screen.getByText(/before the club moves/)).toBeDefined();
+  });
+
   it("renders all nine rows with their lights", () => {
     // No track, so every reading is unread — which is itself the case worth
     // rendering, because it is what a failed detection looks like.
@@ -155,6 +167,16 @@ describe("CoachPanel", () => {
     wrap(<CoachPanel metrics={computeMetrics(null, null)} hasTrack onSeekFrame={noop} />);
     expect(screen.getByText(/nothing was measured well enough/i)).toBeDefined();
     expect(screen.queryByLabelText(/Anthropic API key/i)).toBeNull();
+  });
+
+  it("blames the trim, not the camera, when the swing was not graded", () => {
+    const metrics = withReadings({ "spine-tilt": 23 }).map((m) => ({
+      ...m,
+      verdict: "unknown" as const,
+    }));
+    wrap(<CoachPanel metrics={metrics} hasTrack onSeekFrame={noop} />);
+    expect(screen.getByText(/before the club moves/)).toBeDefined();
+    expect(screen.queryByText(/Check the filming setup/)).toBeNull();
   });
 
   it("opens a drill's steps when tapped", () => {

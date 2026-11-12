@@ -1,5 +1,22 @@
 import { describe, expect, it } from "vitest";
 import { MAX_ANALYSIS_SECONDS, maxAnalysisFrames } from "./analysis";
+import { nextTimestamp, type LandmarkerHandle } from "./pose";
+
+/**
+ * The second run used to restart its timestamps at 1 while the cached
+ * landmarker still remembered the first run's last one, and MediaPipe
+ * rejected every frame. The clock belongs to the landmarker.
+ */
+describe("nextTimestamp", () => {
+  it("keeps advancing across runs on the same landmarker", () => {
+    const handle = { clock: 0 } as LandmarkerHandle;
+    const first = Array.from({ length: 900 }, () => nextTimestamp(handle));
+    const second = Array.from({ length: 514 }, () => nextTimestamp(handle));
+    expect(second[0]).toBeGreaterThan(first[first.length - 1]!);
+    const all = [...first, ...second];
+    expect(all.every((t, i) => i === 0 || t > all[i - 1]!)).toBe(true);
+  });
+});
 
 /**
  * The cap is expressed in seconds of clip but enforced in frames, because the

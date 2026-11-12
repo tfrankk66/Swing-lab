@@ -8,7 +8,14 @@ import {
   Stack,
   Text,
 } from "@mantine/core";
-import { formatMetric, tally, type Metric, type Verdict } from "../lib/metrics";
+import {
+  TRIM_ADVICE,
+  formatMetric,
+  phasesUnsure,
+  tally,
+  type Metric,
+  type Verdict,
+} from "../lib/metrics";
 
 interface Props {
   metrics: Metric[];
@@ -58,7 +65,8 @@ export function LogBook({ metrics, hasTrack, onSeekFrame }: Props) {
   }
 
   const counts = tally(metrics);
-  const summary = [
+  const unsure = phasesUnsure(metrics);
+  const summary = unsure ? "not graded" : [
     counts.good > 0 ? `${counts.good} green` : null,
     counts.watch > 0 ? `${counts.watch} amber` : null,
     counts.crit > 0 ? `${counts.crit} red` : null,
@@ -91,6 +99,12 @@ export function LogBook({ metrics, hasTrack, onSeekFrame }: Props) {
           {summary}
         </Badge>
       </Group>
+
+      {unsure && (
+        <Text size="xs" c="dimmed" ff="monospace" mb="xs" style={{ lineHeight: 1.6 }}>
+          {TRIM_ADVICE}
+        </Text>
+      )}
 
       <Accordion
         value={open}

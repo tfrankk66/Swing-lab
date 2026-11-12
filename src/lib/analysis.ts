@@ -1,4 +1,9 @@
-import { getLandmarker, LANDMARK_COUNT, type ModelQuality } from "./pose";
+import {
+  getLandmarker,
+  LANDMARK_COUNT,
+  nextTimestamp,
+  type ModelQuality,
+} from "./pose";
 import { frameToTime } from "./frames";
 import { IMAGE_STRIDE, WORLD_STRIDE, type SwingTrack } from "./track";
 
@@ -95,7 +100,8 @@ export async function analyzeRange(
   if (total === 0) return null;
 
   onProgress({ done: 0, total, rate: 0, stage: "loading-model" });
-  const { landmarker, delegate } = await getLandmarker(quality);
+  const handle = await getLandmarker(quality);
+  const { landmarker, delegate } = handle;
   if (signal?.aborted) return null;
 
   video.pause();
@@ -119,8 +125,10 @@ export async function analyzeRange(
   let detectMs = 0;
   let lastYield = startedAt;
   // detectForVideo rejects a timestamp that doesn't advance, and at 240fps
-  // consecutive frames round to the same millisecond, so keep our own clock.
-  let stamp = 0;
+  // consecutive frames round to the same millisecond, so keep our own clock —
+  // on the landmarker, not here, because it must keep advancing across runs.
+  // See LandmarkerHandle.clock.
+  let failures = 0;
 
   for (let index = 0; index < total; index++) {
     if (signal?.aborted) {
@@ -133,13 +141,13 @@ export async function analyzeRange(
     const afterSeek = performance.now();
     seekMs += afterSeek - beforeSeek;
 
-    stamp += 1;
     let result;
     try {
       workCtx.drawImage(video, 0, 0, work.width, work.height);
-      result = landmarker.detectForVideo(work, stamp);
+      result = landmarker.detectForVideo(work, nextTimestamp(handle));
     } catch {
       result = null;
+      failures += 1;
     }
     detectMs += performance.now() - afterSeek;
 
@@ -190,6 +198,15 @@ export async function analyzeRange(
   }
 
   video.currentTime = restoreTime;
+
+  // A model that threw on every frame did not find "no golfer" — it did not
+  // run. Returning that as a track of nothing but gaps looks like a filming
+  // problem and sends people to re-shoot; saying so sends them to retry.
+  if (failures === total) {
+    throw new Error(
+      "The pose model rejected every frame. Reload the page and run detection again.",
+    );
+  }
 
   return {
     fps,

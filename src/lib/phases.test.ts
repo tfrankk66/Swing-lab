@@ -113,6 +113,19 @@ describe("detectPhases", () => {
   const TOP = 8 + 24; // first frame of the pause at the top
   const IMPACT = 8 + 24 + 3 + 8; // back at address height
 
+  it("is not thrown by a cold first detection", () => {
+    // The first frame of a run is detected with no tracking behind it and
+    // reaches phase detection unsmoothed. Put it well off the address, so the
+    // jump to frame two is faster than the downswing. It used to become
+    // "the fastest frame", and every phase collapsed onto the first two.
+    const glitched = [{ x: 0.2, y: 0.95 }, ...path.slice(1)];
+    const phases = detectPhases(trackFrom(glitched));
+    expect(phases?.confident).toBe(true);
+    expect(phases!.p4 - 1000).toBeGreaterThanOrEqual(TOP - 1);
+    expect(phases!.p4 - 1000).toBeLessThanOrEqual(TOP + 3);
+    expect(Math.abs(phases!.p7 - 1000 - IMPACT)).toBeLessThanOrEqual(1);
+  });
+
   it("finds the three phases in order", () => {
     const phases = detectPhases(trackFrom(path));
     expect(phases).not.toBeNull();

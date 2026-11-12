@@ -21,7 +21,12 @@ import {
   type Coaching,
 } from "../lib/coach";
 import { prescribe, type Drill } from "../lib/drills";
-import type { Metric, Verdict } from "../lib/metrics";
+import {
+  TRIM_ADVICE,
+  phasesUnsure,
+  type Metric,
+  type Verdict,
+} from "../lib/metrics";
 
 interface Props {
   metrics: Metric[];
@@ -133,9 +138,10 @@ export function CoachPanel({ metrics, hasTrack, onSeekFrame, ask = askCoach }: P
         </Group>
 
         {!measurable ? (
-          <Text size="xs" c="dimmed" ff="monospace">
-            Nothing was measured well enough to coach from. Check the filming
-            setup and run detection again.
+          <Text size="xs" c="dimmed" ff="monospace" style={{ lineHeight: 1.6 }}>
+            {phasesUnsure(metrics)
+              ? TRIM_ADVICE
+              : "Nothing was measured well enough to coach from. Check the filming setup and run detection again."}
           </Text>
         ) : prescriptions.length === 0 ? (
           <Text size="sm">

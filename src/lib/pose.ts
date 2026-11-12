@@ -39,6 +39,24 @@ export interface LandmarkerHandle {
   landmarker: PoseLandmarker;
   quality: ModelQuality;
   delegate: "GPU" | "CPU";
+  /**
+   * The last timestamp this landmarker was given, in its own milliseconds.
+   *
+   * VIDEO mode keeps tracking state between calls and refuses any timestamp
+   * that does not advance past the last one it saw, for the life of the
+   * instance. The instance is cached across runs, so the clock has to live
+   * with it: a counter that restarted at zero for each run had the second
+   * run's every frame rejected ("Packet timestamp mismatch ... expected
+   * 900001 but received 1000"), and re-running on a shorter trim came back
+   * as a track that was nothing but gaps.
+   */
+  clock: number;
+}
+
+/** The next timestamp to hand this landmarker. Always strictly increasing. */
+export function nextTimestamp(handle: LandmarkerHandle): number {
+  handle.clock += 1;
+  return handle.clock;
 }
 
 let cached: LandmarkerHandle | null = null;
@@ -72,14 +90,14 @@ async function build(quality: ModelQuality): Promise<LandmarkerHandle> {
       fileset,
       options("GPU"),
     );
-    return { landmarker, quality, delegate: "GPU" };
+    return { landmarker, quality, delegate: "GPU", clock: 0 };
   } catch {
     // Older mobile Safari and locked-down GPU drivers land here.
     const landmarker = await vision.PoseLandmarker.createFromOptions(
       fileset,
       options("CPU"),
     );
-    return { landmarker, quality, delegate: "CPU" };
+    return { landmarker, quality, delegate: "CPU", clock: 0 };
   }
 }
 

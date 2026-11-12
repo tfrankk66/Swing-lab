@@ -421,6 +421,26 @@ export function tally(metrics: ReadonlyArray<Metric>): Record<Verdict, number> {
   return counts;
 }
 
+/**
+ * True when there were numbers but no grading, because the phases were a guess.
+ *
+ * Distinct from "nothing was measured": the usual cause is a trim that starts
+ * after the takeaway or ends before impact, so the swing has no address or no
+ * top to find. The fix is a longer trim, not a better camera, and the panels
+ * say which.
+ */
+export function phasesUnsure(metrics: ReadonlyArray<Metric>): boolean {
+  return (
+    metrics.length > 0 &&
+    metrics.every((m) => m.verdict === "unknown") &&
+    metrics.some((m) => m.value !== null && Number.isFinite(m.value))
+  );
+}
+
+/** What to tell someone whose trim did not hold a whole swing. */
+export const TRIM_ADVICE =
+  "The trim does not look like a whole swing, so these are not graded. Start it while you are still at address, before the club moves, and end it after impact, then run detection again.";
+
 /** Formats a value for the log book, or an em dash when there is none. */
 export function formatMetric(metric: Metric): string {
   if (metric.value === null || !Number.isFinite(metric.value)) return "—";

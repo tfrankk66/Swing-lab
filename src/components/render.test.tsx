@@ -2,7 +2,7 @@
  * @vitest-environment happy-dom
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { MantineProvider } from "@mantine/core";
 import type { ReactNode } from "react";
 import { AnalyzePanel } from "./AnalyzePanel";
@@ -10,8 +10,11 @@ import { CaptureSheet } from "./CaptureSheet";
 import { Filmstrip } from "./Filmstrip";
 import { Intake } from "./Intake";
 import { LogBook } from "./LogBook";
+import { CoachPanel } from "./CoachPanel";
+import { CoachError } from "../lib/coach";
 import { DEFAULT_REFERENCES } from "../lib/draw";
 import { computeMetrics } from "../lib/metrics";
+import { ALL_GREEN, withReadings } from "../lib/metrics.fixture";
 import { theme } from "../theme";
 
 /**
@@ -119,6 +122,83 @@ describe("LogBook", () => {
       expect(screen.getByText(metric.name), metric.id).toBeDefined();
     }
     expect(screen.getByText("9 unread")).toBeDefined();
+  });
+});
+
+describe("CoachPanel", () => {
+  const faulty = () =>
+    withReadings({ ...ALL_GREEN, "early-extension": 12, tempo: 1.5 });
+
+  afterEach(() => window.localStorage.clear());
+
+  it("waits for a track", () => {
+    wrap(<CoachPanel metrics={[]} hasTrack={false} onSeekFrame={noop} />);
+    expect(screen.getByText(/once there are measurements/i)).toBeDefined();
+  });
+
+  it("prescribes drills offline, worst fault first", () => {
+    wrap(<CoachPanel metrics={faulty()} hasTrack onSeekFrame={noop} />);
+    expect(screen.getByText("Hips pushing toward the ball")).toBeDefined();
+    expect(screen.getByText("Rushed transition")).toBeDefined();
+    expect(screen.getByRole("button", { name: "Backside on the chair" })).toBeDefined();
+    // No key yet, so it asks for one instead of offering the lesson.
+    expect(screen.getByLabelText(/Anthropic API key/i)).toBeDefined();
+    expect(screen.queryByRole("button", { name: /get a lesson/i })).toBeNull();
+  });
+
+  it("says so when nothing is wrong", () => {
+    wrap(<CoachPanel metrics={withReadings(ALL_GREEN)} hasTrack onSeekFrame={noop} />);
+    expect(screen.getByText(/nothing here is obviously wrong/i)).toBeDefined();
+  });
+
+  it("does not offer Claude when nothing was measured", () => {
+    wrap(<CoachPanel metrics={computeMetrics(null, null)} hasTrack onSeekFrame={noop} />);
+    expect(screen.getByText(/nothing was measured well enough/i)).toBeDefined();
+    expect(screen.queryByLabelText(/Anthropic API key/i)).toBeNull();
+  });
+
+  it("opens a drill's steps when tapped", () => {
+    wrap(<CoachPanel metrics={faulty()} hasTrack onSeekFrame={noop} />);
+    fireEvent.click(screen.getByRole("button", { name: "Backside on the chair" }));
+    expect(screen.getByText(/Feel:/)).toBeDefined();
+  });
+
+  it("saves a key, asks the coach with it, and shows the lesson", async () => {
+    const ask = vi.fn(async (key: string) => ({
+      headline: `Lesson for ${key}`,
+      plan: "Twenty chair drills.",
+      model: "claude-opus-5-5",
+      priorities: [
+        {
+          metricId: "early-extension",
+          why: "Your hips run out of room.",
+          cue: "Backside back to the chair",
+          drills: [],
+        },
+      ],
+    }));
+    wrap(<CoachPanel metrics={faulty()} hasTrack onSeekFrame={noop} ask={ask} />);
+
+    fireEvent.change(screen.getByLabelText(/Anthropic API key/i), {
+      target: { value: "  sk-ant-test  " },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.click(screen.getByRole("button", { name: /get a lesson/i }));
+
+    expect(await screen.findByText("Lesson for sk-ant-test")).toBeDefined();
+    expect(screen.getByText(/Backside back to the chair/)).toBeDefined();
+    expect(screen.getByText(/from the numbers only/)).toBeDefined();
+    expect(window.localStorage.getItem("swing-lab.anthropic-key")).toBe("sk-ant-test");
+  });
+
+  it("shows a coach failure as a message", async () => {
+    window.localStorage.setItem("swing-lab.anthropic-key", "sk-ant-bad");
+    const ask = vi.fn(async () => {
+      throw new CoachError("Anthropic rejected that API key.");
+    });
+    wrap(<CoachPanel metrics={faulty()} hasTrack onSeekFrame={noop} ask={ask} />);
+    fireEvent.click(screen.getByRole("button", { name: /get a lesson/i }));
+    expect(await screen.findByText(/rejected that API key/)).toBeDefined();
   });
 });
 

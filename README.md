@@ -3,10 +3,12 @@
 Down-the-line golf swing analysis that runs entirely in the browser. No upload,
 no account, no server holding your video.
 
-**Status: v0.4 — metrics.** Frame-accurate playback and trimming, a skeleton
+**Status: v0.5 — coaching.** Frame-accurate playback and trimming, a skeleton
 tracked across the trimmed swing, address/top/impact found automatically, a
-contact sheet of the swing, and nine measurements read at those three
-positions with reference lines drawn over the picture.
+contact sheet of the swing, nine measurements read at those three positions
+with reference lines drawn over the picture, and coaching: ranked faults with
+drills from a curated library offline, plus an optional lesson from Claude
+written from the numbers alone.
 
 ## Running it
 
@@ -63,12 +65,14 @@ src/
   lib/geom.ts         Plane geometry in pixels, not normalised coordinates
   lib/metrics.ts      The nine measurements and their bands
   lib/draw.ts         Skeleton and reference-line rendering
+  lib/drills.ts       The curated drill library, and fault ranking
+  lib/coach.ts        Claude coaching: prompt, schema, call, API key storage
   hooks/usePlayhead   Playback position + trim-range enforcement
   hooks/usePoseTrack  Analysis lifecycle: progress, cancel, errors
   hooks/useFilmstrip  Contact sheet, rebuilt when the trim settles
   theme.ts            The palette, as a Mantine theme
   components/         Intake, Timeline, Transport, Filmstrip, CaptureSheet,
-                      Overlay, AnalyzePanel, LogBook
+                      Overlay, AnalyzePanel, LogBook, CoachPanel
 scripts/
   prepare-assets.mjs  Copies MediaPipe WASM + downloads model weights
 ```
@@ -337,6 +341,41 @@ as added rather than found:
   number is not comparable to a shaft-plane reading from a system that tracks
   the club. v0.7 adds the clubhead.
 
+## Coaching
+
+The Coach panel sits under the log book and comes in two layers.
+
+**Drills, offline.** `drills.ts` holds a curated library of thirteen drills,
+each tagged with the metric it fixes **and the direction**: too tall and too
+bent over are opposite lessons, so a red spine-tilt light means nothing until
+you know which side of the band it fell on. `prescribe()` takes the amber and
+red readings, ranks them by how far outside the band they are (measured
+against that metric's amber zone, so degrees, percentages and tempo ratios
+compare), keeps the worst three, and gives each one or two drills without
+repeating a drill a higher fault already got. No network, so it works at the
+range with no signal. A test fails if any labelled fault has no drill.
+
+**A lesson from Claude, online.** With the golfer's own Anthropic API key, the
+panel sends the nine readings, their bands, what each means when it is out and
+what it cannot see, and gets back a headline, up to three priorities (each
+with why it matters and one swing thought) and a plan for the next session.
+
+- **Only the numbers leave the phone.** Never the video, a frame or the
+  landmark track. That keeps the "no server holding your video" promise.
+- **The drills are an enum.** The response schema only accepts drill ids
+  from the library, so Claude chooses and explains, but can only prescribe
+  drills a person has written down. Unknown ids are dropped again on parse.
+- **Whose key.** There is no Swing Lab server, so the key is the golfer's,
+  kept in this browser's localStorage and sent only to `api.anthropic.com`
+  (the SDK's `dangerouslyAllowBrowser` mode). "Forget key" removes it.
+- **Model and settings.** `claude-opus-5-5` at `medium` effort, with
+  structured output, a cached system prompt, and server-side refusal
+  fallback (`fallbacks: "default"`) so a declined request is retried on a
+  fallback model inside the same call.
+- **Loaded on demand.** The SDK is about 85KB gzipped, in its own chunk
+  fetched the first time someone asks for a lesson, like MediaPipe. First
+  load went from 113KB to 120KB of gzipped JS, mostly the drill text.
+
 ## Roadmap
 
 | Version  | Adds                                                          |
@@ -344,7 +383,7 @@ as added rather than found:
 | v0.1     | Player: upload, scrub, frame-step, trim, loop                  |
 | v0.2     | MediaPipe pose landmarks, skeleton overlay                     |
 | v0.3     | P1/P4/P7 detection, filmstrip, slow-motion factor inference    |
-| **v0.4** | Nine metrics, plane and butt reference lines, fault thresholds |
-| v0.5     | Claude coaching, curated drill library                         |
+| v0.4     | Nine metrics, plane and butt reference lines, fault thresholds |
+| **v0.5** | Claude coaching, curated drill library                         |
 | v0.6     | IndexedDB history, side-by-side compare, trend lines           |
 | v0.7     | Clubhead tracer                                                |

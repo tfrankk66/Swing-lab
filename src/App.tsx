@@ -25,6 +25,7 @@ import { Overlay } from "./components/Overlay";
 import { AnalyzePanel } from "./components/AnalyzePanel";
 import { Filmstrip } from "./components/Filmstrip";
 import { LogBook } from "./components/LogBook";
+import { CoachPanel } from "./components/CoachPanel";
 import { Transport } from "./components/Transport";
 import { usePlayhead } from "./hooks/usePlayhead";
 import { usePoseTrack } from "./hooks/usePoseTrack";
@@ -556,6 +557,8 @@ export default function App() {
         />
 
         <LogBook metrics={metrics} hasTrack={track !== null} onSeekFrame={seek} />
+
+        <CoachPanel metrics={metrics} hasTrack={track !== null} onSeekFrame={seek} />
 
         {/* Hidden on touch, where none of it is reachable. */}
         <Text

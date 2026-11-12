@@ -11,6 +11,8 @@ import { CaptureSheet } from "./components/CaptureSheet";
 import { Filmstrip } from "./components/Filmstrip";
 import { Intake } from "./components/Intake";
 import { LogBook } from "./components/LogBook";
+import { CoachPanel } from "./components/CoachPanel";
+import { ALL_GREEN, withReadings } from "./lib/metrics.fixture";
 import { Transport } from "./components/Transport";
 import { DEFAULT_REFERENCES } from "./lib/draw";
 import { computeMetrics } from "./lib/metrics";
@@ -165,6 +167,13 @@ function renderEverything(): void {
     />,
     <Transport playing={false} busy={false} onStep={noop} onTogglePlay={noop} />,
     <LogBook metrics={computeMetrics(null, null)} hasTrack onSeekFrame={noop} />,
+    // Faults to prescribe for, and no saved key — the drill list plus the
+    // key entry, which is the only text input in the app.
+    <CoachPanel
+      metrics={withReadings({ ...ALL_GREEN, "early-extension": 12 })}
+      hasTrack
+      onSeekFrame={noop}
+    />,
     <Filmstrip
       thumbs={[
         { frame: 10, url: "data:image/jpeg;base64,x", label: "P1" },

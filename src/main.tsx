@@ -55,6 +55,7 @@ import "@mantine/core/styles/SimpleGrid.css";
 // Typography.
 import "@mantine/core/styles/Text.css";
 import "@mantine/core/styles/Title.css";
+import "@mantine/core/styles/Anchor.css";
 import "@mantine/core/styles/List.css";
 import "@mantine/core/styles/Divider.css";
 

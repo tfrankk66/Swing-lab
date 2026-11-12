@@ -1,7 +1,7 @@
 {
   "name": "swing-lab",
   "private": true,
-  "version": "0.4.0",
+  "version": "0.5.0",
   "type": "module",
   "scripts": {
     "assets": "node scripts/prepare-assets.mjs",
@@ -13,6 +13,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.8.0",
     "@mantine/core": "^8.3.18",
     "@mantine/hooks": "^8.3.18",
     "@mediapipe/tasks-vision": "^1.0.1",

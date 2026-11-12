@@ -338,7 +338,7 @@ export default function App() {
   const trimmedRealMs = (trimmedFrames / effective) * 1000;
 
   return (
-    <div className="app">
+    <div className="app app-clip">
       <Topbar>
         <Badge
           component="button"
@@ -448,16 +448,12 @@ export default function App() {
         </Text>
       </div>
 
-      <Stack
-        className="controls"
-        gap="sm"
-        px="md"
-        pt="sm"
-        style={{
-          borderTop: "1px solid var(--mantine-color-default-border)",
-          background: "var(--mantine-color-body)",
-        }}
-      >
+      {/* Phones: one scrolling column under the video, player controls then
+          panels. Desktop: `.controls` dissolves (display: contents) and its
+          two halves become grid cells — the player under the video on the
+          left, the panels in their own scrolling column on the right. */}
+      <div className="controls">
+      <Stack className="player" gap="sm" px="md" pt="sm">
         <Timeline
           total={total}
           frame={frame}
@@ -530,6 +526,20 @@ export default function App() {
           </Stack>
         </SimpleGrid>
 
+        {/* Hidden on touch, where none of it is reachable. */}
+        <Text
+          size="xs"
+          ff="monospace"
+          c="dimmed"
+          ta="center"
+          tt="uppercase"
+          visibleFrom="sm"
+        >
+          space play · ← → frame · shift+← → ten · i in · o out · l loop
+        </Text>
+      </Stack>
+
+      <Stack className="panels" gap="sm" px="md" pt="sm">
         <AnalyzePanel
           track={track}
           phases={phases}
@@ -558,19 +568,8 @@ export default function App() {
         <LogBook metrics={metrics} hasTrack={track !== null} onSeekFrame={seek} />
 
         <CoachPanel metrics={metrics} hasTrack={track !== null} onSeekFrame={seek} />
-
-        {/* Hidden on touch, where none of it is reachable. */}
-        <Text
-          size="xs"
-          ff="monospace"
-          c="dimmed"
-          ta="center"
-          tt="uppercase"
-          visibleFrom="sm"
-        >
-          space play · ← → frame · shift+← → ten · i in · o out · l loop
-        </Text>
       </Stack>
+      </div>
 
       {sheetOpen && rate && (
         <CaptureSheet

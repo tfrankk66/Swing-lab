@@ -68,7 +68,68 @@ body {
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
+  border-top: 1px solid var(--mantine-color-default-border);
+  background: var(--mantine-color-body);
+}
+
+.panels {
   padding-bottom: calc(var(--mantine-spacing-sm) + var(--safe-b));
+}
+
+/* ------------------------------------------------------------- desktop -- */
+
+/* Two columns once there is room for them.
+
+   On a phone the single column is right: the video on top, everything else
+   scrolling under it, one thumb's reach. On a laptop the same column is a
+   narrow strip down the middle of a wide screen, and reading the log book
+   means scrolling the video out of the way. So from 960px the clip view
+   becomes a grid: the video with its timeline, contact sheet and transport
+   on the left, and the analysis panel, log book and coach in a column of
+   their own on the right that scrolls independently. Tapping a reading on
+   the right moves the picture on the left, and both stay in view.
+
+   `.controls` is the phone's scroll container. Here it dissolves with
+   `display: contents`, so `.player` and `.panels` become grid cells
+   directly — one component tree, two layouts, no duplicated markup. */
+@media (min-width: 60em) {
+  .app.app-clip {
+    display: grid;
+    max-width: 96rem;
+    grid-template-columns: minmax(0, 1fr) minmax(22rem, 30rem);
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "top    top"
+      "stage  panels"
+      "player panels";
+  }
+
+  .app.app-clip .topbar {
+    grid-area: top;
+  }
+
+  .app.app-clip .stage {
+    grid-area: stage;
+    min-height: 0;
+  }
+
+  .app.app-clip .controls {
+    display: contents;
+  }
+
+  .app.app-clip .player {
+    grid-area: player;
+    padding-bottom: calc(var(--mantine-spacing-sm) + var(--safe-b));
+    border-top: 1px solid var(--mantine-color-default-border);
+  }
+
+  .app.app-clip .panels {
+    grid-area: panels;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border-left: 1px solid var(--mantine-color-default-border);
+  }
 }
 
 .intake {

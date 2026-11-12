@@ -53,7 +53,21 @@ body {
   padding-top: calc(var(--mantine-spacing-xs) + var(--safe-t));
 }
 
+/* The controls scroll inside whatever the stage leaves them, rather than
+   pushing the stage out of the way.
+
+   They used to be `flex: none` — sized to their content — with the stage
+   taking what was left. That held while the controls were a timeline and a
+   few buttons. Once a pose track exists they also carry the analysis panel,
+   the log book and the coach, well over a screen tall, and the stage was
+   squeezed to zero: the video vanished the moment detection finished, and
+   tapping a log book row "did nothing" because the frame it jumped to was
+   on a video nobody could see. */
 .controls {
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding-bottom: calc(var(--mantine-spacing-sm) + var(--safe-b));
 }
 
@@ -65,8 +79,12 @@ body {
 
 .stage {
   position: relative;
-  flex: 1;
-  min-height: 0;
+  flex: 1 1 0;
+  /* The floor that keeps the picture on screen however long the panels
+     below it get. Under half the height, so the controls still get room on
+     a landscape phone; `vh` first for browsers without `dvh`. */
+  min-height: 45vh;
+  min-height: 45dvh;
   background: light-dark(
     var(--mantine-color-gray-2),
     var(--mantine-color-dark-8)

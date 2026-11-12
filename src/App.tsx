@@ -454,7 +454,6 @@ export default function App() {
         px="md"
         pt="sm"
         style={{
-          flex: "none",
           borderTop: "1px solid var(--mantine-color-default-border)",
           background: "var(--mantine-color-body)",
         }}
